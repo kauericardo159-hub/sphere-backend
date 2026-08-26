@@ -1,0 +1,260 @@
+/* ==========================================================================
+   NAVIGATION & LAYOUT COMPONENTS CSS (components.css)
+   Project Z Enhanced | Responsivo, Glassmorphism & Neon Design
+   ========================================================================== */
+
+/* BARRA SUPERIOR (TOP BAR) */
+.app-top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: rgba(18, 10, 20, 0.92);
+  border-bottom: 1px solid rgba(255, 45, 85, 0.25);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
+}
+
+.app-top-bar .brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+
+.app-top-bar .brand i {
+  color: var(--chat-accent, #ff2d55);
+  font-size: 1.25rem;
+  filter: drop-shadow(0 0 8px rgba(255, 45, 85, 0.6));
+}
+
+.app-top-bar .top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* BOTÃO "TESTE" NA BARRA SUPERIOR */
+.top-action-btn.btn-teste-top {
+  background: linear-gradient(135deg, rgba(255, 45, 85, 0.2) 0%, rgba(120, 20, 50, 0.3) 100%);
+  border: 1px solid rgba(255, 45, 85, 0.4);
+  color: #ffffff;
+  width: auto;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  position: relative;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 10px rgba(255, 45, 85, 0.2);
+}
+
+.top-action-btn.btn-teste-top i {
+  font-size: 0.85rem;
+  color: #ff2d55;
+  transition: transform 0.2s ease;
+}
+
+.top-action-btn.btn-teste-top:hover {
+  background: #ff2d55;
+  border-color: #ff2d55;
+  color: #ffffff;
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 4px 14px rgba(255, 45, 85, 0.5);
+}
+
+.top-action-btn.btn-teste-top:hover i {
+  color: #ffffff;
+  transform: rotate(15deg);
+}
+
+.top-action-btn.btn-teste-top:active {
+  transform: scale(0.96);
+}
+
+/* BARRA INFERIOR FLUTUANTE (ESTILO PÍLULA) */
+.app-bottom-bar {
+  position: fixed;
+  bottom: 14px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  pointer-events: none;
+  padding: 0 12px;
+  box-sizing: border-box;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.bottom-bar-pill {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  width: 100%;
+  max-width: 520px; /* Largura expandida para suportar novos itens */
+  height: 60px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border-radius: 40px;
+  background: rgba(22, 12, 26, 0.88);
+  border: 1px solid rgba(255, 45, 85, 0.35);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 20px rgba(255, 45, 85, 0.15);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 25px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  flex: 1;
+  max-width: 80px;
+  user-select: none;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.bottom-nav-item i {
+  font-size: 1.1rem;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.bottom-nav-item:hover {
+  color: #ffffff;
+}
+
+.bottom-nav-item:hover i {
+  transform: translateY(-2px);
+}
+
+/* Destaque para Moderação (Staff) */
+.bottom-nav-item.item-staff i {
+  color: #00d2ff;
+}
+
+/* Destaque para Servidor (Criador) */
+.bottom-nav-item.item-creator i {
+  color: #ffd700;
+}
+
+/* Aba Ativa Selecionada */
+.bottom-nav-item.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, rgba(255, 45, 85, 0.9) 0%, rgba(200, 25, 65, 0.9) 100%);
+  box-shadow: 0 4px 14px rgba(255, 45, 85, 0.45);
+}
+
+.bottom-nav-item.active i {
+  transform: scale(1.1);
+  color: #ffffff !important;
+}
+
+/* BADGE DE NOTIFICAÇÃO DO CHAT */
+.top-action-badge {
+  position: absolute;
+  top: 2px;
+  right: 10px;
+  background: var(--chat-accent, #ff2d55);
+  color: #ffffff;
+  font-size: 0.6rem;
+  font-weight: 900;
+  padding: 1px 5px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #160c1a;
+  box-shadow: 0 0 8px rgba(255, 45, 85, 0.9);
+  animation: pulseBadge 2s infinite;
+}
+
+@keyframes pulseBadge {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* ESPAÇADORES DO CORPO DA PÁGINA */
+body.has-bars {
+  padding-top: 64px !important;
+  padding-bottom: 88px !important;
+}
+
+body.chat-fullscreen {
+  padding-top: 0 !important;
+}
+
+/* ==========================================================================
+   ADAPTAÇÃO RESPONSIVA PARA DISPOSITIVOS MÓVEIS
+   ========================================================================== */
+@media (max-width: 480px) {
+  .app-top-bar {
+    padding: 0 12px;
+    height: 56px;
+  }
+
+  .app-top-bar .brand {
+    font-size: 1rem;
+    gap: 8px;
+  }
+
+  .top-action-btn.btn-teste-top {
+    height: 30px;
+    padding: 0 10px;
+    font-size: 0.75rem;
+  }
+
+  .app-bottom-bar {
+    bottom: 10px;
+    padding: 0 6px;
+  }
+  
+  .bottom-bar-pill {
+    height: 56px;
+    border-radius: 35px;
+    padding: 0 4px;
+  }
+
+  .bottom-nav-item {
+    padding: 4px 6px;
+    font-size: 0.62rem;
+  }
+  
+  .bottom-nav-item i {
+    font-size: 1.05rem;
+  }
+}

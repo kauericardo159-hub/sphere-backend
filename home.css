@@ -1,0 +1,16 @@
+/* home.css (apenas o esqueleto da página) */
+
+.home-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px;
+  background: #120a14; /* ou o seu padrão */
+  border-bottom: 1px solid rgba(255, 45, 85, 0.2);
+}
+
+#home-screen {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* NADA DE .home-user-card ou .server-users aqui! */

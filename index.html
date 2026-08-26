@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  
+  <!-- Configurações PWA e Mobile Native -->
+  <meta name="theme-color" content="#120a14">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Project Z">
+  
+  <!-- Prevenção Rigorosa de Cache durante Desenvolvimento/Produção -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <!-- Meta Tags de Open Graph & Compartilhamento (Deeplink/Social) -->
+  <meta property="og:title" content="Project Z - Comunidade & Roleplay">
+  <meta property="og:description" content="Conecte-se, converse e compartilhe no Project Z.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://ui-avatars.com/api/?background=ff2d55&color=fff&name=Project+Z">
+
+  <title>Modo Teste</title>
+
+  <!-- Google Fonts: Inter & Roboto Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Supabase JS Client v2 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- FontAwesome 6 Pro CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  
+  <!-- Twemoji CDN para Emojis Nativos Cross-Platform -->
+  <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
+
+  <!-- Cropper.js CDN (Para Recorte de Fotos do Perfil) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" crossorigin="anonymous">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js" crossorigin="anonymous"></script>
+
+  <!-- Estilos da Aplicação (Cascata Organizada) -->
+  <link rel="stylesheet" href="auth.css?v=5.0.0">
+  <link rel="stylesheet" href="home.css?v=5.0.0">
+  <link rel="stylesheet" href="homecard.css?v=5.0.0">
+  <link rel="stylesheet" href="chat.css?v=5.0.0">
+  <link rel="stylesheet" href="listchat.css?v=5.0.0">
+  <link rel="stylesheet" href="configuracoes.css?v=5.0.0">
+  <link rel="stylesheet" href="perfil.css?v=5.0.0">
+  <link rel="stylesheet" href="editarperfil.css?v=5.0.0">
+  <link rel="stylesheet" href="components.css?v=5.0.0">
+
+  <!-- ========================================================================== -->
+  <!-- SCRIPTS DA APLICAÇÃO (ENCADEAMENTO LÓGICO DE DEPENDÊNCIAS) -->
+  <!-- ========================================================================== -->
+  
+  <!-- 1. Core & Autenticação & Presença -->
+  <script defer src="auth.js?v=5.0.0"></script>
+  <script defer src="ban-check.js?v=5.0.0"></script>
+  <script defer src="status.js?v=5.0.0"></script>
+  <script defer src="components.js?v=5.0.0"></script>
+
+  <!-- 2. Módulos do Sistema de Chat e Mensagens -->
+  <script defer src="chat.js?v=5.0.0"></script>
+  <script defer src="listchat.js?v=5.0.0"></script>
+  <script defer src="components-chat.js?v=5.0.0"></script>
+  <script defer src="mensagens.js?v=5.0.0"></script>
+  <script defer src="barrachat.js?v=5.0.0"></script>
+  <script defer src="historico-chat.js?v=5.0.0"></script>
+  <script defer src="ajusteschat.js?v=5.0.0"></script>
+  <script defer src="notchat.js?v=5.0.0"></script>
+  <script defer src="chatvoz.js?v=5.0.0"></script>
+
+  <!-- 3. Redes Sociais, Perfis & Feed -->
+  <script defer src="social.js?v=5.0.0"></script>
+  <script defer src="social-actions.js?v=5.0.0"></script>
+  <script defer src="perfil.js?v=5.0.0"></script>
+  <script defer src="viewperfil.js?v=5.0.0"></script>
+  <script defer src="editarperfil.js?v=5.0.0"></script>
+  <script defer src="homecard.js?v=5.0.0"></script>
+  <script defer src="home.js?v=5.0.0"></script>
+  <script defer src="configuracoes.js?v=5.0.0"></script>
+
+  <!-- 4. Utilitários Globais, Emojis & Console -->
+  <script defer src="emojis.js?v=5.0.0"></script>
+  <script defer src="clique-limpo.js?v=5.0.0"></script>
+  <script defer src="console.js?v=5.0.0"></script>
+
+</head>
+<body>
+
+  <!-- ========================================================================== -->
+  <!-- TELA DE AUTENTICAÇÃO E REGISTRO -->
+  <!-- ========================================================================== -->
+  <div class="card" id="auth-card">
+    
+    <!-- TELA ENTRAR (LOGIN) -->
+    <div id="form-login">
+      <h2><i class="fa-solid fa-right-to-bracket"></i> Entrar</h2>
+
+      <!-- Lista de Contas que Já Entraram (Multi-account Switcher) -->
+      <div id="contas-salvas-container" class="hidden"></div>
+
+      <div class="input-group">
+        <i class="fa-solid fa-at input-icon"></i>
+        <input type="text" id="login-username" placeholder="@nome" autocomplete="username" spellcheck="false" required />
+      </div>
+
+      <div class="input-group">
+        <i class="fa-solid fa-lock input-icon"></i>
+        <input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" required />
+      </div>
+
+      <div class="btns">
+        <button type="button" id="btn-entrar" onclick="entrar()"><i class="fa-solid fa-check"></i> Entrar</button>
+        <button type="button" class="sec" onclick="mostrarTela('criar')"><i class="fa-solid fa-user-plus"></i> Criar Conta</button>
+      </div>
+    </div>
+
+    <!-- TELA CRIAR CONTA (WIZARD EM 3 ETAPAS) -->
+    <div id="form-criar" class="hidden">
+      <h2><i class="fa-solid fa-user-plus"></i> Criar Conta</h2>
+      
+      <!-- Indicador Visual de Etapas do Wizard -->
+      <div class="wizard-steps-bar" role="progressbar" aria-valuenow="1" aria-valuemin="1" aria-valuemax="3">
+        <div class="step-dot active" id="dot-1"></div>
+        <div class="step-dot" id="dot-2"></div>
+        <div class="step-dot" id="dot-3"></div>
+      </div>
+
+      <!-- ETAPA 1: Nome de Exibição, @username e Senhas -->
+      <div id="step-1" class="step-content">
+        <div class="input-group">
+          <i class="fa-solid fa-signature input-icon"></i>
+          <input type="text" id="criar-display-name" placeholder="Nome de Exibição (ex: Gabriel)" required />
+        </div>
+        <div class="input-group">
+          <i class="fa-solid fa-at input-icon"></i>
+          <input type="text" id="criar-username" placeholder="@nome (ex: meu_user_1)" oninput="validarUsername(this)" autocomplete="username" spellcheck="false" required />
+        </div>
+        <div class="input-group">
+          <i class="fa-solid fa-key input-icon"></i>
+          <input type="password" id="criar-senha" placeholder="Senha" autocomplete="new-password" required />
+        </div>
+        <div class="input-group">
+          <i class="fa-solid fa-shield-halved input-icon"></i>
+          <input type="password" id="criar-confirmar" placeholder="Confirmar senha" autocomplete="new-password" required />
+        </div>
+      </div>
+
+      <!-- ETAPA 2: Data de Nascimento -->
+      <div id="step-2" class="step-content hidden">
+        <div class="input-group">
+          <i class="fa-solid fa-calendar-days input-icon"></i>
+          <input type="date" id="criar-nascimento" title="Data de Nascimento" required />
+        </div>
+      </div>
+
+      <!-- ETAPA 3: Avatar Inicial -->
+      <div id="step-3" class="step-content hidden">
+        <div class="input-group">
+          <i class="fa-solid fa-image input-icon"></i>
+          <input type="url" id="avatar-url" placeholder="URL da Foto de Avatar (Opcional)" spellcheck="false" />
+        </div>
+      </div>
+
+      <p id="msg-erro" class="error" role="alert"></p>
+
+      <div class="btns">
+        <button type="button" class="sec" onclick="voltarEtapa()"><i class="fa-solid fa-arrow-left"></i> Voltar</button>
+        <button type="button" id="btn-step-avancar" onclick="avancarEtapa()">Avançar <i class="fa-solid fa-arrow-right"></i></button>
+        <button type="button" id="btn-step-criar" class="hidden" onclick="criarConta()"><i class="fa-solid fa-check"></i> Confirmar</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ========================================================================== -->
+  <!-- TELA PRINCIPAL DA APLICAÇÃO (HOME, CHAT E FEED) -->
+  <!-- ========================================================================== -->
+  <div id="home-screen" class="hidden">
+    
+    <!-- Modal de Alteração Rápida de Avatar -->
+    <div id="avatar-modal" class="avatar-modal hidden" role="dialog" aria-modal="true" aria-labelledby="avatar-modal-title">
+      <h4 id="avatar-modal-title"><i class="fa-solid fa-image"></i> Alterar Foto do Avatar</h4>
+      <input type="url" id="edit-avatar-input" placeholder="Cole a URL da nova foto..." spellcheck="false" />
+      <div class="avatar-modal-btns">
+        <button type="button" id="btn-salvar-avatar" onclick="salvarNovoAvatar()">
+          <i class="fa-solid fa-floppy-disk"></i> Salvar Foto
+        </button>
+        <button type="button" class="sec" onclick="alternarMenuAvatar()">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- Container Dinâmico Principal do Feed/Homecards -->
+    <main id="homecard-container" class="homecard-container"></main>
+
+  </div>
+
+  <!-- Modal Global para Visualização Fullscreen de Mídias do Chat -->
+  <div id="chat-media-modal-container"></div>
+
+  <!-- Container de Injeção para Painéis Flutuantes, Modais de Perfil e Configurações -->
+  <div id="chat-modals-portal"></div>
+
+</body>
+</html>

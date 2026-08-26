@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Criador & Servidor - Project Z</title>
+    
+    <!-- Dependências de Scripts e Fontes -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #ff2d55;
+            --primary-hover: #e02447;
+            --primary-glow: rgba(255, 45, 85, 0.35);
+            --bg-dark: #080409;
+            --card-bg: rgba(20, 11, 24, 0.92);
+            --card-hover: rgba(255, 45, 85, 0.08);
+            --text-color: #ffffff;
+            --text-muted: #b3a5b8;
+            --text-dim: #7a6b80;
+            --border-light: rgba(255, 255, 255, 0.08);
+            --border-accent: rgba(255, 45, 85, 0.28);
+            --online-green: #2ed573;
+            --offline-red: #ff3838;
+            --gold-creator: #ffd700;
+            --blue-info: #00d2ff;
+            --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body { 
+            width: 100%; 
+            min-height: 100vh; 
+            font-family: var(--font-main); 
+            color: var(--text-color); 
+            background-color: var(--bg-dark); 
+        }
+        
+        body {
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(255, 45, 85, 0.08) 0%, transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(108, 92, 231, 0.08) 0%, transparent 45%),
+                linear-gradient(to bottom, rgba(8, 4, 9, 0.7), rgba(8, 4, 9, 0.98));
+            background-repeat: no-repeat; 
+            background-size: cover; 
+            background-position: center top; 
+            background-attachment: fixed;
+            padding: 20px 14px;
+        }
+
+        .container { max-width: 1320px; margin: 0 auto; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 45, 85, 0.4); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
+
+        /* Tela de Acesso Negado (Apenas Criador) */
+        #access-denied-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+            text-align: center;
+            gap: 20px;
+        }
+
+        .lock-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+            max-width: 460px;
+            width: 100%;
+        }
+
+        .lock-card i { font-size: 3.5rem; color: var(--gold-creator); margin-bottom: 10px; }
+        .lock-card h2 { font-size: 1.6rem; font-weight: 800; color: #fff; }
+        .lock-card p { color: var(--text-muted); font-size: 0.9rem; margin-top: 8px; line-height: 1.5; }
+
+        .btn-back-home {
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+            margin-top: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+        }
+        .btn-back-home:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 4px 15px var(--primary-glow); }
+
+        /* Cabeçalho Principal */
+        #server-app-content { display: none; animation: fadeIn 0.3s ease-out; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--card-bg);
+            border: 1px solid var(--border-accent);
+            padding: 20px 24px;
+            border-radius: 20px;
+            backdrop-filter: blur(16px);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-brand { display: flex; align-items: center; gap: 16px; }
+        .header-brand i { font-size: 2.2rem; color: var(--gold-creator); filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5)); }
+        .header-brand h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: 0.3px; }
+        .header-brand p { color: var(--text-muted); font-size: 0.85rem; margin-top: 2px; }
+
+        .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+        /* Barra de Ações de Controle e Desligamento */
+        .server-control-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-accent);
+            border-radius: 18px;
+            padding: 18px 22px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .server-status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-badge-pill {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+        }
+
+        .status-badge-pill.active { background: rgba(46, 213, 115, 0.15); color: var(--online-green); border: 1px solid rgba(46, 213, 115, 0.4); }
+        .status-badge-pill.disabled { background: rgba(255, 56, 56, 0.15); color: var(--offline-red); border: 1px solid rgba(255, 56, 56, 0.4); }
+
+        .server-cmds-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-cmd {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-light);
+            color: var(--text-color);
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-cmd:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+
+        .btn-cmd.toggle-off {
+            background: rgba(255, 56, 56, 0.18);
+            color: var(--offline-red);
+            border-color: rgba(255, 56, 56, 0.4);
+        }
+
+        .btn-cmd.toggle-off:hover {
+            background: var(--offline-red);
+            color: #fff;
+        }
+
+        .btn-cmd.toggle-on {
+            background: rgba(46, 213, 115, 0.18);
+            color: var(--online-green);
+            border-color: rgba(46, 213, 115, 0.4);
+        }
+
+        .btn-cmd.toggle-on:hover {
+            background: var(--online-green);
+            color: #000;
+        }
+
+        /* Grid de Status */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 18px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stat-card:hover { transform: translateY(-3px); border-color: var(--border-accent); }
+        
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+            background: rgba(255, 45, 85, 0.1);
+            color: var(--primary-color);
+        }
+
+        .stat-info .title { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.8px; }
+        .stat-info .value { font-size: 1.4rem; font-weight: 800; margin-top: 4px; color: #fff; }
+        
+        /* Tabela de Usuários */
+        .section-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 16px; 
+            flex-wrap: wrap; 
+            gap: 12px; 
+        }
+
+        .section-title { font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+        .section-title i { color: var(--primary-color); }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 240px;
+            max-width: 380px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim);
+        }
+
+        .search-box input {
+            width: 100%;
+            background: var(--card-bg);
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            padding: 10px 14px 10px 40px;
+            color: #fff;
+            outline: none;
+            font-size: 0.88rem;
+            transition: all 0.2s ease;
+        }
+
+        .search-box input:focus { border-color: var(--primary-color); box-shadow: 0 0 12px var(--primary-glow); }
+
+        .btn-refresh {
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 800;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 14px var(--primary-glow);
+        }
+        .btn-refresh:hover { background: var(--primary-hover); transform: translateY(-1px); }
+
+        .users-list {
+            background: var(--card-bg);
+            border: 1px solid var(--border-accent);
+            border-radius: 16px;
+            overflow: hidden;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            margin-bottom: 24px;
+        }
+
+        .table-responsive { width: 100%; overflow-x: auto; }
+
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { 
+            background: rgba(255, 45, 85, 0.12); 
+            color: var(--primary-color); 
+            font-size: 0.75rem; 
+            text-transform: uppercase; 
+            font-weight: 800; 
+            letter-spacing: 0.8px; 
+            padding: 16px;
+            border-bottom: 1px solid var(--border-accent);
+        }
+
+        td { padding: 14px 16px; border-bottom: 1px solid var(--border-light); vertical-align: middle; font-size: 0.88rem; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: var(--card-hover); }
+
+        .avatar-img {
+            width: 40px; 
+            height: 40px; 
+            border-radius: 50%; 
+            object-fit: cover;
+            border: 2px solid var(--primary-color); 
+            background: #180e1b;
+            flex-shrink: 0;
+        }
+
+        .user-cell { display: flex; align-items: center; gap: 10px; font-weight: 800; color: #fff; }
+        .id-badge { font-family: monospace; font-size: 0.78rem; color: var(--text-dim); background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-light); }
+        
+        .pwd-box { display: flex; align-items: center; gap: 8px; }
+
+        .toggle-btn {
+            background: rgba(255, 255, 255, 0.08); 
+            border: 1px solid var(--border-light); 
+            color: var(--text-muted); 
+            cursor: pointer; 
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            transition: all 0.2s ease;
+        }
+        .toggle-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.15); }
+
+        .btn-action-group { display: flex; gap: 6px; align-items: center; }
+
+        .btn-pwd-reset {
+            background: rgba(0, 210, 255, 0.15);
+            color: var(--blue-info);
+            border: 1px solid rgba(0, 210, 255, 0.3);
+            padding: 7px 11px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .btn-pwd-reset:hover { background: var(--blue-info); color: #000; }
+
+        .btn-delete {
+            background: rgba(255, 56, 56, 0.15);
+            color: var(--offline-red);
+            border: 1px solid rgba(255, 56, 56, 0.3);
+            padding: 7px 11px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .btn-delete:hover { background: var(--offline-red); color: #fff; }
+
+        /* Módulo Avançado de Audit Logs */
+        .logs-card {
+            background: #100814;
+            border: 1px solid var(--border-accent);
+            border-radius: 18px;
+            padding: 20px;
+        }
+
+        .logs-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .logs-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logs-box {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 14px;
+            font-family: monospace;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            max-height: 220px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .log-entry { margin-bottom: 6px; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); padding-bottom: 4px; }
+        .log-entry.success { color: var(--online-green); }
+        .log-entry.error { color: var(--offline-red); }
+        .log-entry.warning { color: var(--gold-creator); }
+
+        /* Toast Notice */
+        #server-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--card-bg);
+            border: 1px solid var(--primary-color);
+            color: #fff;
+            padding: 14px 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 10000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #server-toast.show { transform: translateY(0); opacity: 1; }
+
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            .hero-header { flex-direction: column; text-align: center; }
+            .header-brand { flex-direction: column; }
+            .section-header { flex-direction: column; align-items: stretch; }
+            .search-box { max-width: 100%; }
+            .server-control-panel { flex-direction: column; align-items: stretch; text-align: center; }
+            .server-status-indicator { justify-content: center; }
+            .server-cmds-group { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <!-- Tela de Acesso Negado (Apenas Criador) -->
+        <div id="access-denied-screen" style="display: none;">
+            <div class="lock-card">
+                <i class="fa-solid fa-crown"></i>
+                <h2>Acesso Exclusivo do Criador</h2>
+                <p>Apenas o Criador Oficial do projeto possui permissões para gerenciar a hospedagem e desligar o servidor.</p>
+                <a href="index.html" class="btn-back-home"><i class="fa-solid fa-house"></i> Voltar ao Início</a>
+            </div>
+        </div>
+
+        <!-- Conteúdo do Painel -->
+        <div id="server-app-content">
+            <header class="hero-header">
+                <div class="header-brand">
+                    <i class="fa-solid fa-crown"></i>
+                    <div>
+                        <h1>PAINEL DO SERVIDOR & DEV</h1>
+                        <p>Controle de Hospedagem, Status de Manutenção e Gestão de Banco</p>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <a href="dev.html" class="btn-refresh" style="background: rgba(255,255,255,0.08); border: 1px solid var(--border-light);"><i class="fa-solid fa-shield-halved"></i> Moderação</a>
+                    <a href="index.html" class="btn-back-home" style="margin: 0;"><i class="fa-solid fa-house"></i> Site</a>
+                </div>
+            </header>
+
+            <!-- Painel de Controle e Estado do Servidor -->
+            <div class="server-control-panel">
+                <div class="server-status-indicator">
+                    <span style="font-weight: 800; font-size: 0.9rem; color: var(--text-muted);">Estado Atual:</span>
+                    <div id="status-pill-indicator" class="status-badge-pill active">
+                        <i class="fa-solid fa-circle" style="font-size: 0.65rem;"></i>
+                        <span id="status-pill-text">Servidor Ativo</span>
+                    </div>
+                </div>
+
+                <div class="server-cmds-group">
+                    <button id="btn-toggle-server" class="btn-cmd toggle-off" onclick="alternarEstadoServidor()">
+                        <i class="fa-solid fa-power-off"></i> Desligar Servidor
+                    </button>
+                    <button class="btn-cmd" onclick="testarPingConexao()">
+                        <i class="fa-solid fa-network-wired"></i> Testar Ping API
+                    </button>
+                    <button class="btn-cmd" onclick="reiniciarServidorRender()">
+                        <i class="fa-solid fa-rotate"></i> Restart Render
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cards de Métricas -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fa-solid fa-server"></i></div>
+                    <div class="stat-info">
+                        <div class="title">API Node/Render</div>
+                        <div class="value" id="server-status-text">Online</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fa-solid fa-stopwatch"></i></div>
+                    <div class="stat-info">
+                        <div class="title">Tempo Ativo (Uptime)</div>
+                        <div class="value" id="server-uptime">Carregando...</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fa-solid fa-bolt"></i></div>
+                    <div class="stat-info">
+                        <div class="title">Latência (Ping)</div>
+                        <div class="value" id="server-ping">-- ms</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fa-solid fa-database"></i></div>
+                    <div class="stat-info">
+                        <div class="title">Contas no Banco</div>
+                        <div class="value" id="total-users">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabela de Contas -->
+            <div class="section-header">
+                <h2 class="section-title"><i class="fa-solid fa-users"></i> Gerenciamento de Contas</h2>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="search-input" placeholder="Buscar @username ou ID..." oninput="filterUsers()">
+                    </div>
+                    <button class="btn-refresh" onclick="fetchUsers()">
+                        <i class="fa-solid fa-rotate-right" id="refresh-icon"></i> Sincronizar
+                    </button>
+                </div>
+            </div>
+
+            <div class="users-list">
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Avatar</th>
+                                <th>Username / Nome</th>
+                                <th>ID</th>
+                                <th>Senha da Conta</th>
+                                <th>Ações Rápidas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                                    <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                                    <p style="margin-top: 10px;">Carregando banco de dados...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Console de Logs de Auditoria -->
+            <div class="logs-card">
+                <div class="logs-header">
+                    <div class="logs-title">
+                        <i class="fa-solid fa-terminal"></i> Histórico de Registros do Servidor
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-cmd" style="padding: 6px 12px; font-size: 0.75rem;" onclick="limparLogsConsole()"><i class="fa-solid fa-trash-can"></i> Limpar Logs</button>
+                    </div>
+                </div>
+                <div class="logs-box" id="logs-console">
+                    <div class="log-entry">[SISTEMA] Console do Criador pronto para monitoramento.</div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="server-toast">
+        <i class="fa-solid fa-circle-check" style="color: var(--online-green);"></i>
+        <span id="server-toast-msg">Ação realizada com sucesso!</span>
+    </div>
+
+    <script>
+        const API_URL = "https://chat-rp-teste.onrender.com";
+        const SUPABASE_URL = "https://phvnxlogznbplynwflch.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_CvzU52jm8tRyWBE0g4UvKg_J_nVMIAQ";
+
+        const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+        let globalUsersCache = [];
+        let servidorDesligadoModoLocal = false;
+
+        function adicionarLog(mensagem, tipo = 'info') {
+            const consoleBox = document.getElementById('logs-console');
+            if (!consoleBox) return;
+
+            const hora = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = `log-entry ${tipo}`;
+            div.innerText = `[${hora}] ${mensagem}`;
+
+            consoleBox.appendChild(div);
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        function limparLogsConsole() {
+            const consoleBox = document.getElementById('logs-console');
+            if (consoleBox) consoleBox.innerHTML = '<div class="log-entry">[SISTEMA] Console de registros purgado.</div>';
+        }
+
+        function mostrarToast(mensagem, eErro = false) {
+            const toast = document.getElementById('server-toast');
+            const toastMsg = document.getElementById('server-toast-msg');
+            const icon = toast.querySelector('i');
+
+            toastMsg.innerText = mensagem;
+            if (eErro) {
+                icon.className = "fa-solid fa-circle-exclamation";
+                icon.style.color = "var(--offline-red)";
+                toast.style.borderColor = "var(--offline-red)";
+            } else {
+                icon.className = "fa-solid fa-circle-check";
+                icon.style.color = "var(--online-green)";
+                toast.style.borderColor = "var(--primary-color)";
+            }
+
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3500);
+        }
+
+        // VERIFICAÇÃO EXCLUSIVA PARA O CRIADOR (is_creator === true)
+        function verificarAcessoExclusivoCriador() {
+            try {
+                const raw = localStorage.getItem('usuario_logado') || localStorage.getItem('usuario') || localStorage.getItem('user');
+                if (!raw) { bloquearAcesso(); return false; }
+
+                const user = JSON.parse(raw);
+                const eCriador = Boolean(user.is_creator);
+
+                if (!eCriador) { bloquearAcesso(); return false; }
+
+                document.getElementById('server-app-content').style.display = 'block';
+                verificarEstadoModoManutencao();
+                return true;
+            } catch (e) {
+                bloquearAcesso();
+                return false;
+            }
+        }
+
+        function bloquearAcesso() {
+            document.getElementById('access-denied-screen').style.display = 'flex';
+            document.getElementById('server-app-content').style.display = 'none';
+        }
+
+        function formatUptime(seconds) {
+            if (!seconds || isNaN(seconds)) return "Inativo";
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return `${h}h ${m}m ${s}s`;
+        }
+
+        function verificarEstadoModoManutencao() {
+            servidorDesligadoModoLocal = localStorage.getItem('app_servidor_desligado') === 'true';
+            atualizarInterfaceEstadoServidor(servidorDesligadoModoLocal);
+        }
+
+        function atualizarInterfaceEstadoServidor(desligado) {
+            const pillIndicator = document.getElementById('status-pill-indicator');
+            const pillText = document.getElementById('status-pill-text');
+            const btnToggle = document.getElementById('btn-toggle-server');
+
+            if (desligado) {
+                pillIndicator.className = "status-badge-pill disabled";
+                pillText.innerText = "Servidor Desligado (Manutenção)";
+                btnToggle.className = "btn-cmd toggle-on";
+                btnToggle.innerHTML = `<i class="fa-solid fa-play"></i> Ligar Servidor`;
+            } else {
+                pillIndicator.className = "status-badge-pill active";
+                pillText.innerText = "Servidor Ativo (Online)";
+                btnToggle.className = "btn-cmd toggle-off";
+                btnToggle.innerHTML = `<i class="fa-solid fa-power-off"></i> Desligar Servidor`;
+            }
+        }
+
+        async function alternarEstadoServidor() {
+            servidorDesligadoModoLocal = !servidorDesligadoModoLocal;
+            localStorage.setItem('app_servidor_desligado', servidorDesligadoModoLocal ? 'true' : 'false');
+
+            atualizarInterfaceEstadoServidor(servidorDesligadoModoLocal);
+
+            if (servidorDesligadoModoLocal) {
+                mostrarToast('Servidor colocado em modo Offline / Manutenção.', true);
+                adicionarLog('SERVIDOR DESLIGADO PELO CRIADOR (Manutenção Ativa).', 'error');
+            } else {
+                mostrarToast('Servidor religado com sucesso!');
+                adicionarLog('SERVIDOR RELIGADO PELO CRIADOR.', 'success');
+            }
+        }
+
+        async function fetchServerStats() {
+            if (servidorDesligadoModoLocal) {
+                document.getElementById('server-status-text').innerText = "Desligado";
+                document.getElementById('server-uptime').innerText = "Manutenção";
+                document.getElementById('server-ping').innerText = "N/A";
+                return;
+            }
+
+            const start = Date.now();
+            try {
+                const res = await fetch(`${API_URL}/status`);
+                const ping = Date.now() - start;
+                const data = await res.json();
+                
+                document.getElementById('server-status-text').innerText = "Online";
+                document.getElementById('server-uptime').innerText = formatUptime(data.uptime);
+                document.getElementById('server-ping').innerText = `${ping} ms`;
+            } catch (err) {
+                document.getElementById('server-status-text').innerText = "Offline";
+                document.getElementById('server-uptime').innerText = "N/A";
+                document.getElementById('server-ping').innerText = "N/A";
+                adicionarLog("API Render indisponível ou em estado de repouso.", "warning");
+            }
+        }
+
+        async function testarPingConexao() {
+            adicionarLog("Medindo latência de resposta da API...");
+            await fetchServerStats();
+            mostrarToast("Medição de latência concluída!");
+        }
+
+        async function reiniciarServidorRender() {
+            if (!confirm("Deseja enviar uma solicitação de restart para o serviço no Render?")) return;
+
+            adicionarLog("Comando de reinício enviado ao Render...", "warning");
+            try {
+                await fetch(`${API_URL}/restart`, { method: 'POST' });
+                mostrarToast("Solicitação de reinício concluída!");
+            } catch (e) {
+                mostrarToast("Comando enviado. A API subirá novamente em instantes.");
+            }
+        }
+
+        async function fetchUsers() {
+            if (!verificarAcessoExclusivoCriador()) return;
+
+            const refreshIcon = document.getElementById('refresh-icon');
+            if (refreshIcon) refreshIcon.classList.add('fa-spin');
+
+            let { data: usuarios, error } = await supabaseClient
+                .from('usuarios')
+                .select('*')
+                .order('id', { ascending: true });
+
+            if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+
+            if (error || !usuarios) {
+                document.getElementById('users-table-body').innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--offline-red); padding: 30px;">Erro ao ler tabela de usuários.</td></tr>`;
+                mostrarToast("Erro de leitura do banco de dados", true);
+                adicionarLog("Erro Supabase: " + (error ? error.message : 'Falha de leitura'), "error");
+                return;
+            }
+
+            globalUsersCache = usuarios;
+            document.getElementById('total-users').innerText = usuarios.length;
+            renderUsers(usuarios);
+            adicionarLog(`Banco sincronizado: ${usuarios.length} contas ativas.`, "success");
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('users-table-body');
+            tbody.innerHTML = '';
+
+            if (users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 30px;">Nenhum usuário cadastrado.</td></tr>`;
+                return;
+            }
+
+            users.forEach(user => {
+                const usernameDisplay = user.username || 'sem_nome';
+                const nameDisplay = user.display_name || usernameDisplay;
+                const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(usernameDisplay)}`;
+                const avatarSrc = (user.avatar_url && user.avatar_url.trim() !== '') ? user.avatar_url : defaultAvatar;
+                const eCriador = Boolean(user.is_creator);
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>
+                            <img src="${avatarSrc}" class="avatar-img" onerror="this.onerror=null; this.src='${defaultAvatar}';">
+                        </td>
+                        <td>
+                            <div class="user-cell">
+                                <span>${nameDisplay}</span>
+                                ${eCriador ? '<i class="fa-solid fa-crown" style="color:var(--gold-creator); font-size:0.85rem;" title="Criador"></i>' : ''}
+                            </div>
+                            <div style="font-size:0.75rem; color:var(--text-dim)">@${usernameDisplay}</div>
+                        </td>
+                        <td><span class="id-badge">#${user.id || 'N/A'}</span></td>
+                        <td>
+                            <div class="pwd-box">
+                                <span class="id-badge" id="pwd-${user.id}">••••••••</span>
+                                <button class="toggle-btn" onclick="togglePassword(${user.id}, '${user.senha || ''}')" title="Exibir/Ocultar Senha">
+                                    <i class="fa-solid fa-eye" id="eye-${user.id}"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="btn-action-group">
+                                <button class="btn-pwd-reset" onclick="redefinirSenhaDireta(${user.id}, '${usernameDisplay}')" title="Redefinir Senha">
+                                    <i class="fa-solid fa-key"></i> Senha
+                                </button>
+                                <button class="btn-delete" ${eCriador ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onclick="deleteUser(${user.id}, '${usernameDisplay}')">
+                                    <i class="fa-solid fa-trash"></i> Excluir
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function filterUsers() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            const filtered = globalUsersCache.filter(u => 
+                (u.username && u.username.toLowerCase().includes(query)) ||
+                (u.display_name && u.display_name.toLowerCase().includes(query)) ||
+                (u.id && u.id.toString().includes(query))
+            );
+            renderUsers(filtered);
+        }
+
+        function togglePassword(id, realSenha) {
+            const pwdElement = document.getElementById(`pwd-${id}`);
+            const eyeIcon = document.getElementById(`eye-${id}`);
+            
+            if (pwdElement.innerText === '••••••••') {
+                pwdElement.innerText = realSenha || 'Sem Senha';
+                eyeIcon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                pwdElement.innerText = '••••••••';
+                eyeIcon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        async function redefinirSenhaDireta(id, username) {
+            const novaSenha = prompt(`Informe a nova senha para a conta @${username}:`);
+            if (!novaSenha || novaSenha.trim() === '') return;
+
+            const { error } = await supabaseClient
+                .from('usuarios')
+                .update({ senha: novaSenha.trim() })
+                .eq('id', id);
+
+            if (error) {
+                mostrarToast('Erro ao redefinir senha: ' + error.message, true);
+                adicionarLog(`Erro ao redefinir senha de @${username}`, "error");
+            } else {
+                mostrarToast(`Senha de @${username} alterada com sucesso!`);
+                adicionarLog(`Senha da conta @${username} atualizada no banco.`, "success");
+                fetchUsers();
+            }
+        }
+
+        async function deleteUser(id, username) {
+            if (!confirm(`Excluir permanentemente a conta @${username}? Esta ação não pode ser revertida.`)) return;
+
+            const { error } = await supabaseClient.from('usuarios').delete().eq('id', id);
+            
+            if (error) {
+                mostrarToast('Erro ao excluir conta: ' + error.message, true);
+                adicionarLog(`Falha ao remover @${username}`, "error");
+            } else {
+                mostrarToast(`Conta @${username} excluída com sucesso!`);
+                adicionarLog(`Conta @${username} removida do banco de dados.`, "success");
+                fetchUsers();
+            }
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            if (verificarAcessoExclusivoCriador()) {
+                fetchServerStats();
+                fetchUsers();
+
+                setInterval(fetchServerStats, 8000);
+                setInterval(fetchUsers, 20000);
+            }
+        });
+    </script>
+</body>
+</html>
