@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: sphere
+    env: node
+    region: ohio # Ou a região de sua preferência (ex: oregon, frankfurt)
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: SUPABASE_URL
+        value: https://phvnxlogznbplynwflch.supabase.co
+      - key: SUPABASE_KEY
+        value: sb_publishable_CvzU52jm8tRyWBE0g4UvKg_J_nVMIAQ
+      - key: NODE_ENV
+        value: production
