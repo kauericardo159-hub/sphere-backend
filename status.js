@@ -1,47 +1,39 @@
-// ==========================================================================
-// MÓDULO DE STATUS E PRESENÇA EM TEMPO REAL (status.js)
-// Project Z v5.0 | Supabase Database-First Presence Engine (No LocalStorage State)
+          // ==========================================================================
+// MÓDULO DE STATUS E PRESENÇA EM TEMPO REAL (status.js) - OTIMIZADO
+// Project Z v5.1 | Supabase Database-First Presence Engine
 // ==========================================================================
 
 (function () {
   'use strict';
 
   const CONFIG = {
-    LIMITE_INATIVIDADE_MS: 2 * 60 * 1000, // 2 minutos para Ausente automático
-    INTERVALO_VERIFICACAO_MS: 10 * 1000,   // Verificação a cada 10s
+    LIMITE_INATIVIDADE_MS: 2 * 60 * 1000, 
+    INTERVALO_VERIFICACAO_MS: 15 * 1000,   
+    THROTTLE_UPDATE_MS: 5 * 1000, // Previne spam de UPDATE no Supabase
     CHANNEL_PRESENCE: 'realtime_presence_v5',
     CHANNEL_DB: 'public_status_updates_v5'
   };
 
   let tempoUltimaAtividade = Date.now();
+  let ultimaAtualizacaoServidor = 0;
   let canalPresence = null;
   let canalRealtimeDB = null;
-  
-  // Cache de memória apenas para a sessão ativa no navegador
+
   let estadoMemoria = {
     userId: null,
     statusAtual: 'offline',
     isManual: false
   };
 
-  // Injeção dos Estilos CSS Globais
   (function injetarEstilosStatus() {
     if (document.getElementById('status-css-v5')) return;
 
     const css = `
       .status-dot {
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border: 2.5px solid #120a14;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
-        flex-shrink: 0;
-        position: relative;
-        box-sizing: border-box;
-        transition: background-color 0.25s ease, box-shadow 0.25s ease;
+        width: 14px; height: 14px; border-radius: 50%; display: inline-flex;
+        align-items: center; justify-content: center; border: 2.5px solid #120a14;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7); flex-shrink: 0; position: relative;
+        box-sizing: border-box; transition: background-color 0.25s ease, box-shadow 0.25s ease;
       }
       .status-dot.online { background-color: #23a55a; box-shadow: 0 0 10px rgba(35, 165, 90, 0.6); }
       .status-dot.ausente { background-color: #f0b232; box-shadow: 0 0 8px rgba(240, 178, 50, 0.5); }
@@ -85,7 +77,6 @@
     return window.supabaseClient || window.supabase || window.sb || null;
   }
 
-  // Apenas lê a ID primária para autenticação no socket
   function obterIdUsuarioLogado() {
     try {
       const raw = localStorage.getItem('usuario_logado') || localStorage.getItem('usuario') || localStorage.getItem('user');
@@ -134,7 +125,6 @@
     return `<span class="user-tag member">Membro</span>`;
   }
 
-  // Atualiza o DOM dinamicamente
   function notificarInterfaceStatus(userId, novoStatus) {
     if (userId === null || userId === undefined) return;
     const info = obterInfoStatus(novoStatus);
@@ -146,7 +136,6 @@
     });
   }
 
-  // Grava o status diretamente no Banco de Dados Supabase (Fonte Única da Verdade)
   async function atualizarStatusServidor(novoStatus, forcarManual = false) {
     const userId = estadoMemoria.userId || obterIdUsuarioLogado();
     if (!userId) return;
@@ -155,14 +144,21 @@
     if (!sb) return;
 
     const stNormalizado = String(novoStatus || 'offline').toLowerCase();
+    const agora = Date.now();
+
+    // Controle de throttling para evitar consumo excessivo de cota no Supabase
+    if (!forcarManual && (agora - ultimaAtualizacaoServidor < CONFIG.THROTTLE_UPDATE_MS) && stNormalizado === estadoMemoria.statusAtual) {
+      return;
+    }
 
     if (forcarManual) {
       estadoMemoria.isManual = (stNormalizado === 'dnd' || stNormalizado === 'ocupado' || stNormalizado === 'ausente');
     } else if (estadoMemoria.isManual) {
-      return; // Se o usuário definiu DND ou Ausente manualmente, ignora interações automáticas do mouse
+      return;
     }
 
     estadoMemoria.statusAtual = stNormalizado;
+    ultimaAtualizacaoServidor = agora;
 
     try {
       await sb
@@ -175,11 +171,10 @@
 
       notificarInterfaceStatus(userId, stNormalizado);
     } catch (err) {
-      console.error('[StatusEngine] Erro ao sincronizar status no PostgreSQL:', err);
+      console.error('[StatusEngine] Erro ao sincronizar status:', err);
     }
   }
 
-  // Inicializa o Realtime e sincroniza com o banco
   async function iniciarMotorPresenca() {
     const userId = obterIdUsuarioLogado();
     if (!userId) return;
@@ -188,7 +183,6 @@
     const sb = obterSupabase();
     if (!sb) return;
 
-    // 1. Busca o status REAL diretamente do banco PostgreSQL
     try {
       const { data } = await sb.from('usuarios').select('status').eq('id', userId).single();
       if (data && data.status) {
@@ -198,10 +192,9 @@
         notificarInterfaceStatus(userId, statusBanco);
       }
     } catch (e) {
-      console.warn('[StatusEngine] Falha ao consultar status inicial do banco:', e);
+      console.warn('[StatusEngine] Falha ao consultar status inicial:', e);
     }
 
-    // 2. Conecta ao WebSocket do Realtime Presence
     if (canalPresence) sb.removeChannel(canalPresence);
 
     canalPresence = sb.channel(CONFIG.CHANNEL_PRESENCE, {
@@ -213,7 +206,6 @@
         const state = canalPresence.presenceState();
         const idsAtivos = Object.keys(state);
 
-        // Quem não está no Presence WebSocket é marcado visualmente como offline
         document.querySelectorAll('[data-user-status-id]').forEach((el) => {
           const id = el.getAttribute('data-user-status-id');
           if (id && String(id) !== String(userId) && !idsAtivos.includes(String(id))) {
@@ -237,14 +229,12 @@
             online_at: new Date().toISOString()
           });
 
-          // Se não tiver status manual travado no banco, assume 'online'
           if (!estadoMemoria.isManual) {
             atualizarStatusServidor('online', false);
           }
         }
       });
 
-    // 3. Ouve alterações CDC no banco de dados para sincronizar múltiplos navegadores/dispositivos
     if (!canalRealtimeDB) {
       canalRealtimeDB = sb
         .channel(CONFIG.CHANNEL_DB)
@@ -257,7 +247,6 @@
     }
   }
 
-  // Detector de atividade do usuário
   function registrarAtividade() {
     tempoUltimaAtividade = Date.now();
 
@@ -271,29 +260,12 @@
     }
   }
 
-  // Envia desacoplamento ao fechar a janela
   function desconectarAoSair() {
-    const userId = estadoMemoria.userId || obterIdUsuarioLogado();
-    const sb = obterSupabase();
-    if (!userId || !sb) return;
-
-    const url = `${sb.supabaseUrl}/rest/v1/usuarios?id=eq.${userId}`;
-    const payload = JSON.stringify({ status: 'offline', last_seen: new Date().toISOString() });
-
-    const headers = {
-      'type': 'application/json',
-      'apikey': sb.supabaseKey,
-      'Authorization': `Bearer ${sb.supabaseKey}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
-    };
-
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(url, new Blob([payload], headers));
+    if (canalPresence) {
+      canalPresence.untrack();
     }
   }
 
-  // Eventos de Ciclo de Vida
   function iniciarListeners() {
     iniciarMotorPresenca();
 
@@ -319,7 +291,6 @@
     window.addEventListener('beforeunload', desconectarAoSair);
     window.addEventListener('pagehide', desconectarAoSair);
 
-    // Checagem periódica de inatividade
     setInterval(() => {
       if (!navigator.onLine || estadoMemoria.isManual) return;
 
@@ -337,7 +308,6 @@
     iniciarListeners();
   }
 
-  // Interface Pública
   window.obterInfoStatus = obterInfoStatus;
   window.obterHtmlStatusDot = obterHtmlStatusDot;
   window.obterHtmlCustomStatus = obterHtmlCustomStatus;
