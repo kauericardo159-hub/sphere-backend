@@ -1,6 +1,6 @@
 // ==========================================================================
 // MÓDULO DE EDIÇÃO DE PERFIL - ESTILO PROJECT Z (editarperfil.js)
-// Integrado com status.js, Cropper.js & Molduras Sem Recorte
+// Project Z v5.0 | Integrado com status.js (int8), Cropper.js & Molduras
 // ==========================================================================
 
 (function () {
@@ -11,7 +11,23 @@
   let selosSelecionados = [];
   let cropperInstancia = null;
 
-  // Sanitizadores
+  // Helper para obtenção segura do Supabase Client
+  function obterSupabaseEditarPerfil() {
+    return window.supabaseClient || window.supabase || window.sb || null;
+  }
+
+  // Resolução do Usuário no LocalStorage
+  function obterUsuarioLocalEditarPerfil() {
+    try {
+      const raw = localStorage.getItem('usuario_logado') || localStorage.getItem('usuario') || localStorage.getItem('user');
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.error("[EditarPerfil] Erro ao carregar usuário do localStorage:", e);
+    }
+    return null;
+  }
+
+  // Sanitizadores de Entrada
   function sanitizarAtributoInput(str) {
     if (!str) return '';
     return String(str).replace(/"/g, '&quot;');
@@ -25,7 +41,7 @@
       .replace(/>/g, '&gt;');
   }
 
-  // Toast Flutuante
+  // Notification Toast
   function mostrarToastEdit(mensagem, tipo = 'info', tempo = 3500) {
     const antigo = document.getElementById('edit-toast-msg');
     if (antigo) antigo.remove();
@@ -51,7 +67,7 @@
     }, tempo);
   }
 
-  // Carregador Dinâmico do Cropper.js
+  // Carregamento Assíncrono do Cropper.js
   async function carregarCropperJS() {
     if (window.Cropper) return true;
 
@@ -72,7 +88,7 @@
     });
   }
 
-  // Gestão de Saída Não Salva
+  // Proteção contra Perda de Dados Não Salvos
   function confirmarSaidaPagina(e) {
     if (formularioComAlteracoes) {
       const msg = "Você possui alterações não salvas! Deseja realmente sair?";
@@ -110,6 +126,7 @@
   function possuiPermissaoTags(usuario) {
     return Boolean(
       usuario.is_creator ||
+      usuario.is_criador ||
       usuario.is_verified ||
       (usuario.tags && String(usuario.tags).trim().length > 0)
     );
@@ -131,9 +148,9 @@
   function calcularSelosPermitidos(usuario) {
     const selos = new Set();
 
-    if (usuario.is_creator) selos.add('Creator');
+    if (usuario.is_creator || usuario.is_criador) selos.add('Creator');
     if (usuario.is_verified) selos.add('Verificado');
-    if (usuario.is_admin) selos.add('Admin');
+    if (usuario.is_admin || usuario.role === 'admin') selos.add('Admin');
 
     if (usuario.selos_concedidos) {
       extrairListaItens(usuario.selos_concedidos).forEach(s => selos.add(s));
@@ -146,7 +163,7 @@
     return Array.from(selos);
   }
 
-  // Recorte Exclusivo para Avatar e Banner (Moldura excluída)
+  // Recorte Exclusivo para Avatar e Banner
   async function abrirModalCropImage(file, tipo, callbackSucesso) {
     const liberado = await carregarCropperJS();
     if (!liberado) {
@@ -308,7 +325,7 @@
   }
 
   function abrirModalEditarPerfil() {
-    const usuario = JSON.parse(localStorage.getItem('usuario_logado'));
+    const usuario = obterUsuarioLocalEditarPerfil();
     if (!usuario) {
       mostrarToastEdit("Sessão não encontrada. Por favor, faça login.", "erro");
       return;
@@ -393,7 +410,7 @@
           </div>
         </div>
 
-        <!-- Moldura Section (SEM CORTE - Ajuste Automático) -->
+        <!-- Moldura Section -->
         <div class="media-card-box">
           <div class="media-card-label"><i class="fa-solid fa-circle-notch"></i> Moldura de Perfil (Png/Gif Transparente)</div>
           <div class="source-tabs">
@@ -604,7 +621,6 @@
       return;
     }
 
-    // REGRA DA MOLDURA: Não passa pelo Cropper.js! Aplicação direta para preservar transparência do PNG/GIF.
     if (tipo === 'moldura') {
       try {
         const dataUrlMoldura = await otimizarImagemGaleria(file, 400, 400);
@@ -615,7 +631,6 @@
       return;
     }
 
-    // Suporte direto para GIFs animadas sem recorte
     if (file.type === 'image/gif') {
       try {
         const dataUrlGif = await otimizarImagemGaleria(file, 800, 800);
@@ -626,7 +641,6 @@
       return;
     }
 
-    // Avatares e Banners normais passam pelo Cropper.js
     abrirModalCropImage(file, tipo, (croppedBase64) => {
       aplicarImagemAoFormulario(croppedBase64, tipo);
     });
@@ -673,13 +687,13 @@
   }
 
   async function salvarAlteracoesPerfil() {
-    const usuario = JSON.parse(localStorage.getItem('usuario_logado'));
-    if (!usuario || !usuario.id) {
+    const usuario = obterUsuarioLocalEditarPerfil();
+    if (!usuario || usuario.id === undefined) {
       mostrarToastEdit("Sessão expirada. Faça login novamente.", "erro");
       return;
     }
 
-    const sb = window.supabaseClient || window.supabase || window.sb;
+    const sb = obterSupabaseEditarPerfil();
     if (!sb) {
       mostrarToastEdit("Erro de conexão com o banco de dados.", "erro");
       return;
@@ -746,11 +760,18 @@
         } else {
           mostrarToastEdit("Erro ao salvar: " + error.message, "erro");
         }
-      } else if (data && data.length > 0) {
-        const usuarioAtualizado = { ...usuario, ...data[0] };
-        localStorage.setItem('usuario_logado', JSON.stringify(usuarioAtualizado));
+      } else {
+        // Monta o objeto com as alterações mais recentes
+        const dadosRetornados = (data && data.length > 0) ? data[0] : payload;
+        const usuarioAtualizado = { ...usuario, ...dadosRetornados };
 
-        // INTEGRAÇÃO COM STATUS.JS: Força atualização imediata no banco e no gerenciador automático
+        // Garante a persistência em todas as chaves de storage possíveis
+        const jsonAtualizado = JSON.stringify(usuarioAtualizado);
+        localStorage.setItem('usuario_logado', jsonAtualizado);
+        if (localStorage.getItem('usuario')) localStorage.setItem('usuario', jsonAtualizado);
+        if (localStorage.getItem('user')) localStorage.setItem('user', jsonAtualizado);
+
+        // Notifica o motor status.js forçando a nova escolha
         if (typeof window.atualizarStatusServidor === 'function') {
           await window.atualizarStatusServidor(novoStatus, true);
         }
@@ -759,8 +780,11 @@
         mostrarToastEdit("Perfil atualizado com sucesso!", "sucesso");
         fecharModalEditarPerfil(true);
 
+        // Atualização reativa das views de interface ativas
         if (typeof window.abrirPerfil === 'function') {
           window.abrirPerfil(usuarioAtualizado);
+        } else if (typeof window.renderHomeCard === 'function') {
+          window.renderHomeCard(usuarioAtualizado);
         }
       }
     } catch (err) {

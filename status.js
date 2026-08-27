@@ -1,278 +1,285 @@
 // ==========================================================================
 // MÓDULO DE STATUS E PRESENÇA EM TEMPO REAL (status.js)
-// Project Z v5.0 | Supabase Presence Realtime & Fechamento Garantido
+// Project Z v5.0 | Supabase Database-First Presence Engine (No LocalStorage State)
 // ==========================================================================
 
-(function injetarEstilosStatus() {
-  if (document.getElementById('status-css')) return;
+(function () {
+  'use strict';
 
-  const css = `
-    .status-dot {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border: 2.5px solid #120a14;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
-      flex-shrink: 0;
-      position: relative;
-      box-sizing: border-box;
-      transition: background-color 0.25s ease;
-    }
-    .status-dot.online { background-color: #23a55a; }
-    .status-dot.ausente { background-color: #f0b232; }
-    .status-dot.ausente::after {
-      content: '';
-      position: absolute;
-      top: -2px;
-      left: -2px;
-      width: 8px;
-      height: 8px;
-      background-color: #120a14;
-      border-radius: 50%;
-    }
-    .status-dot.dnd { background-color: #f23f43; }
-    .status-dot.dnd::after {
-      content: '';
-      width: 6px;
-      height: 2px;
-      background-color: #120a14;
-      border-radius: 2px;
-    }
-    .status-dot.offline { background-color: #80848e; }
-    .status-dot.offline::after {
-      content: '';
-      width: 5px;
-      height: 5px;
-      background-color: #120a14;
-      border-radius: 50%;
-    }
-    .custom-status-text {
-      font-size: 0.73rem;
-      color: #b3a5b8;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      max-width: 140px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .custom-status-emoji { font-style: normal; font-size: 0.85rem; }
-    .user-tag {
-      font-size: 0.62rem;
-      font-weight: 800;
-      padding: 2px 6px;
-      border-radius: 6px;
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-      line-height: 1;
-    }
-    .user-tag.creator { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; box-shadow: 0 0 8px rgba(255, 215, 0, 0.35); }
-    .user-tag.mod { background: #00d2ff; color: #000; }
-    .user-tag.member { background: rgba(255, 255, 255, 0.08); color: #b3a5b8; }
-    .avatar-status-badge { position: absolute; bottom: -2px; right: -2px; z-index: 5; }
-  `;
+  const CONFIG = {
+    LIMITE_INATIVIDADE_MS: 2 * 60 * 1000, // 2 minutos para Ausente automático
+    INTERVALO_VERIFICACAO_MS: 10 * 1000,   // Verificação a cada 10s
+    CHANNEL_PRESENCE: 'realtime_presence_v5',
+    CHANNEL_DB: 'public_status_updates_v5'
+  };
 
-  const styleTag = document.createElement('style');
-  styleTag.id = 'status-css';
-  styleTag.innerHTML = css;
-  document.head.appendChild(styleTag);
-})();
+  let tempoUltimaAtividade = Date.now();
+  let canalPresence = null;
+  let canalRealtimeDB = null;
+  
+  // Cache de memória apenas para a sessão ativa no navegador
+  let estadoMemoria = {
+    userId: null,
+    statusAtual: 'offline',
+    isManual: false
+  };
 
-function obterInfoStatus(status) {
-  const st = (status || 'offline').toLowerCase();
-  switch (st) {
-    case 'ausente':
-    case 'idle':
-    case 'ausente_auto':
-      return { classe: 'ausente', label: 'Ausente' };
-    case 'dnd':
-    case 'ocupado':
-      return { classe: 'dnd', label: 'Não Perturbe' };
-    case 'online':
-      return { classe: 'online', label: 'Online' };
-    case 'offline':
-    case 'invisivel':
-    default:
-      return { classe: 'offline', label: 'Offline' };
-  }
-}
+  // Injeção dos Estilos CSS Globais
+  (function injetarEstilosStatus() {
+    if (document.getElementById('status-css-v5')) return;
 
-function obterHtmlStatusDot(status) {
-  const info = obterInfoStatus(status);
-  return `<span class="status-dot ${info.classe}" data-status-indicator="${info.classe}" title="${info.label}"></span>`;
-}
+    const css = `
+      .status-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 2.5px solid #120a14;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+        flex-shrink: 0;
+        position: relative;
+        box-sizing: border-box;
+        transition: background-color 0.25s ease, box-shadow 0.25s ease;
+      }
+      .status-dot.online { background-color: #23a55a; box-shadow: 0 0 10px rgba(35, 165, 90, 0.6); }
+      .status-dot.ausente { background-color: #f0b232; box-shadow: 0 0 8px rgba(240, 178, 50, 0.5); }
+      .status-dot.ausente::after {
+        content: ''; position: absolute; top: -2px; left: -2px; width: 8px; height: 8px;
+        background-color: #120a14; border-radius: 50%;
+      }
+      .status-dot.dnd { background-color: #f23f43; box-shadow: 0 0 10px rgba(242, 63, 67, 0.6); }
+      .status-dot.dnd::after {
+        content: ''; width: 6px; height: 2px; background-color: #120a14; border-radius: 2px;
+      }
+      .status-dot.offline { background-color: #80848e; }
+      .status-dot.offline::after {
+        content: ''; width: 5px; height: 5px; background-color: #120a14; border-radius: 50%;
+      }
+      .custom-status-text {
+        font-size: 0.73rem; color: #b3a5b8; display: flex; align-items: center; gap: 5px;
+        max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.9;
+      }
+      .custom-status-emoji { font-style: normal; font-size: 0.88rem; }
+      .user-tag {
+        font-size: 0.62rem; font-weight: 800; padding: 2px 6px; border-radius: 6px;
+        display: inline-flex; align-items: center; gap: 4px; text-transform: uppercase;
+        letter-spacing: 0.4px; line-height: 1; user-select: none;
+      }
+      .user-tag.creator { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; }
+      .user-tag.admin { background: linear-gradient(135deg, #ff2d55, #e02448); color: #fff; }
+      .user-tag.mod { background: #00d2ff; color: #000; }
+      .user-tag.vip { background: linear-gradient(135deg, #a55eea, #8854d0); color: #fff; }
+      .user-tag.member { background: rgba(255, 255, 255, 0.08); color: #b3a5b8; }
+      .avatar-status-badge { position: absolute; bottom: -2px; right: -2px; z-index: 5; }
+    `;
 
-function obterHtmlTag(usuario) {
-  if (!usuario) return `<span class="user-tag member">Membro</span>`;
-  if (usuario.is_creator) return `<span class="user-tag creator" title="Criador da Comunidade"><i class="fa-solid fa-crown"></i> Criador</span>`;
-  if (usuario.role === 'mod' || usuario.role === 'admin') return `<span class="user-tag mod" title="Moderador"><i class="fa-solid fa-shield-halved"></i> Mod</span>`;
-  return `<span class="user-tag member">Membro</span>`;
-}
+    const styleTag = document.createElement('style');
+    styleTag.id = 'status-css-v5';
+    styleTag.innerHTML = css;
+    document.head.appendChild(styleTag);
+  })();
 
-function obterSupabase() {
-  return window.supabaseClient || window.supabase || window.sb || null;
-}
-
-function obterUsuarioLocal() {
-  try {
-    const raw = localStorage.getItem('usuario_logado') || localStorage.getItem('usuario') || localStorage.getItem('user');
-    if (raw) return JSON.parse(raw);
-  } catch (e) {}
-  return null;
-}
-
-let tempoInatividade = Date.now();
-let canalPresence = null;
-let canalRealtimeDB = null;
-const LIMITE_INATIVIDADE_MS = 2 * 60 * 1000; // 2 minutos
-
-// Atualiza o status respeitando as regras manuais do usuário
-async function atualizarStatusServidor(novoStatus, forcar = false) {
-  const userLogado = obterUsuarioLocal();
-  if (!userLogado || !userLogado.id) return;
-
-  const statusAtual = (userLogado.status || 'online').toLowerCase();
-
-  // REGRA: Se o usuário colocou "Não Perturbe" ou "Offline" manualmente, o sistema automático NÃO altera para online/ausente
-  if (!forcar && (statusAtual === 'dnd' || statusAtual === 'ocupado' || statusAtual === 'offline') && (novoStatus === 'online' || novoStatus === 'ausente')) {
-    return;
+  function obterSupabase() {
+    return window.supabaseClient || window.supabase || window.sb || null;
   }
 
-  if (userLogado.status !== novoStatus || forcar) {
-    userLogado.status = novoStatus;
-    userLogado.last_seen = new Date().toISOString();
-    localStorage.setItem('usuario_logado', JSON.stringify(userLogado));
+  // Apenas lê a ID primária para autenticação no socket
+  function obterIdUsuarioLogado() {
+    try {
+      const raw = localStorage.getItem('usuario_logado') || localStorage.getItem('usuario') || localStorage.getItem('user');
+      if (raw) {
+        const u = JSON.parse(raw);
+        return u && u.id !== undefined ? Number(u.id) : null;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function obterInfoStatus(status) {
+    const st = String(status || 'offline').toLowerCase().trim();
+    switch (st) {
+      case 'online': return { classe: 'online', label: 'Online' };
+      case 'ausente':
+      case 'idle':
+      case 'ausente_auto': return { classe: 'ausente', label: 'Ausente' };
+      case 'dnd':
+      case 'ocupado':
+      case 'nao_perturbe': return { classe: 'dnd', label: 'Não Perturbe' };
+      case 'offline':
+      case 'invisivel':
+      default: return { classe: 'offline', label: 'Offline' };
+    }
+  }
+
+  function obterHtmlStatusDot(status = 'offline', userId = null) {
+    const info = obterInfoStatus(status);
+    const idAttr = userId !== null && userId !== undefined ? `data-user-status-id="${userId}"` : '';
+    return `<span class="status-dot ${info.classe}" ${idAttr} data-status-indicator="${info.classe}" title="${info.label}"></span>`;
+  }
+
+  function obterHtmlCustomStatus(frase, emoji = '💬') {
+    if (!frase || frase.trim() === '') return '';
+    const fraseLimpa = String(frase).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<div class="custom-status-text" title="${fraseLimpa}"><i class="custom-status-emoji">${emoji}</i><span>${fraseLimpa}</span></div>`;
+  }
+
+  function obterHtmlTag(usuario) {
+    if (!usuario) return `<span class="user-tag member">Membro</span>`;
+    if (usuario.is_creator || usuario.is_criador) return `<span class="user-tag creator"><i class="fa-solid fa-crown"></i> Criador</span>`;
+    if (usuario.role === 'admin' || usuario.is_admin) return `<span class="user-tag admin"><i class="fa-solid fa-shield-cat"></i> Admin</span>`;
+    if (usuario.role === 'mod' || usuario.is_mod) return `<span class="user-tag mod"><i class="fa-solid fa-shield-halved"></i> Mod</span>`;
+    if (usuario.is_vip || usuario.vip) return `<span class="user-tag vip"><i class="fa-solid fa-gem"></i> VIP</span>`;
+    return `<span class="user-tag member">Membro</span>`;
+  }
+
+  // Atualiza o DOM dinamicamente
+  function notificarInterfaceStatus(userId, novoStatus) {
+    if (userId === null || userId === undefined) return;
+    const info = obterInfoStatus(novoStatus);
+    const elements = document.querySelectorAll(`[data-user-status-id="${String(userId)}"]`);
+    elements.forEach((el) => {
+      el.className = `status-dot ${info.classe}`;
+      el.setAttribute('title', info.label);
+      el.setAttribute('data-status-indicator', info.classe);
+    });
+  }
+
+  // Grava o status diretamente no Banco de Dados Supabase (Fonte Única da Verdade)
+  async function atualizarStatusServidor(novoStatus, forcarManual = false) {
+    const userId = estadoMemoria.userId || obterIdUsuarioLogado();
+    if (!userId) return;
 
     const sb = obterSupabase();
-    if (sb) {
-      try {
-        await sb
-          .from('usuarios')
-          .update({ 
-            status: novoStatus,
-            last_seen: new Date().toISOString()
-          })
-          .eq('id', userLogado.id);
-      } catch (err) {
-        console.error('[Status] Erro ao sincronizar status:', err);
-      }
+    if (!sb) return;
+
+    const stNormalizado = String(novoStatus || 'offline').toLowerCase();
+
+    if (forcarManual) {
+      estadoMemoria.isManual = (stNormalizado === 'dnd' || stNormalizado === 'ocupado' || stNormalizado === 'ausente');
+    } else if (estadoMemoria.isManual) {
+      return; // Se o usuário definiu DND ou Ausente manualmente, ignora interações automáticas do mouse
     }
 
-    notificarInterfaceStatus(userLogado.id, novoStatus);
-  }
-}
+    estadoMemoria.statusAtual = stNormalizado;
 
-// Atualiza os pontos de status no DOM em tempo real
-function notificarInterfaceStatus(userId, novoStatus) {
-  const info = obterInfoStatus(novoStatus);
+    try {
+      await sb
+        .from('usuarios')
+        .update({
+          status: stNormalizado,
+          last_seen: new Date().toISOString()
+        })
+        .eq('id', userId);
 
-  document.querySelectorAll(`[data-user-status-id="${userId}"]`).forEach((el) => {
-    el.className = `status-dot ${info.classe}`;
-    el.setAttribute('title', info.label);
-    el.setAttribute('data-status-indicator', info.classe);
-  });
-}
-
-// Presence do Supabase em Tempo Real
-function iniciarPresenceSupabase() {
-  const sb = obterSupabase();
-  const user = obterUsuarioLocal();
-  if (!sb || !user || !user.id) return;
-
-  if (canalPresence) {
-    sb.removeChannel(canalPresence);
+      notificarInterfaceStatus(userId, stNormalizado);
+    } catch (err) {
+      console.error('[StatusEngine] Erro ao sincronizar status no PostgreSQL:', err);
+    }
   }
 
-  canalPresence = sb.channel('online-users-presence', {
-    config: {
-      presence: {
-        key: String(user.id),
-      },
-    },
-  });
+  // Inicializa o Realtime e sincroniza com o banco
+  async function iniciarMotorPresenca() {
+    const userId = obterIdUsuarioLogado();
+    if (!userId) return;
 
-  canalPresence
-    .on('presence', { event: 'sync' }, () => {
-      const state = canalPresence.presenceState();
-      const idsAtivos = Object.keys(state);
+    estadoMemoria.userId = userId;
+    const sb = obterSupabase();
+    if (!sb) return;
 
-      // Marca visualmente no DOM quem realmente tem socket ativo
-      document.querySelectorAll('[data-user-status-id]').forEach((el) => {
-        const id = el.getAttribute('data-user-status-id');
-        if (id && !idsAtivos.includes(String(id))) {
-          // Mantém dnd ou offline se estiver no banco, mas se for antigo ajusta
-          if (el.classList.contains('online') || el.classList.contains('ausente')) {
+    // 1. Busca o status REAL diretamente do banco PostgreSQL
+    try {
+      const { data } = await sb.from('usuarios').select('status').eq('id', userId).single();
+      if (data && data.status) {
+        const statusBanco = String(data.status).toLowerCase();
+        estadoMemoria.statusAtual = statusBanco;
+        estadoMemoria.isManual = (statusBanco === 'dnd' || statusBanco === 'ocupado' || statusBanco === 'ausente');
+        notificarInterfaceStatus(userId, statusBanco);
+      }
+    } catch (e) {
+      console.warn('[StatusEngine] Falha ao consultar status inicial do banco:', e);
+    }
+
+    // 2. Conecta ao WebSocket do Realtime Presence
+    if (canalPresence) sb.removeChannel(canalPresence);
+
+    canalPresence = sb.channel(CONFIG.CHANNEL_PRESENCE, {
+      config: { presence: { key: String(userId) } }
+    });
+
+    canalPresence
+      .on('presence', { event: 'sync' }, () => {
+        const state = canalPresence.presenceState();
+        const idsAtivos = Object.keys(state);
+
+        // Quem não está no Presence WebSocket é marcado visualmente como offline
+        document.querySelectorAll('[data-user-status-id]').forEach((el) => {
+          const id = el.getAttribute('data-user-status-id');
+          if (id && String(id) !== String(userId) && !idsAtivos.includes(String(id))) {
             el.className = 'status-dot offline';
             el.setAttribute('title', 'Offline');
+            el.setAttribute('data-status-indicator', 'offline');
+          }
+        });
+      })
+      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+        if (Array.isArray(leftPresences)) {
+          leftPresences.forEach((p) => {
+            if (p.user_id) notificarInterfaceStatus(p.user_id, 'offline');
+          });
+        }
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await canalPresence.track({
+            user_id: userId,
+            online_at: new Date().toISOString()
+          });
+
+          // Se não tiver status manual travado no banco, assume 'online'
+          if (!estadoMemoria.isManual) {
+            atualizarStatusServidor('online', false);
           }
         }
       });
-    })
-    .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-      if (leftPresences && Array.isArray(leftPresences)) {
-        leftPresences.forEach((p) => {
-          if (p.user_id) {
-            notificarInterfaceStatus(p.user_id, 'offline');
+
+    // 3. Ouve alterações CDC no banco de dados para sincronizar múltiplos navegadores/dispositivos
+    if (!canalRealtimeDB) {
+      canalRealtimeDB = sb
+        .channel(CONFIG.CHANNEL_DB)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'usuarios' }, (payload) => {
+          if (payload.new && payload.new.id !== undefined) {
+            notificarInterfaceStatus(payload.new.id, payload.new.status);
           }
-        });
-      }
-    })
-    .subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await canalPresence.track({
-          user_id: user.id,
-          online_at: new Date().toISOString(),
-        });
-      }
-    });
-
-  // Ouve atualizações da tabela 'usuarios' para refletir na hora na tela
-  if (!canalRealtimeDB) {
-    canalRealtimeDB = sb
-      .channel('public:status_changes')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'usuarios' }, (payload) => {
-        if (payload.new && payload.new.id) {
-          notificarInterfaceStatus(payload.new.id, payload.new.status);
-        }
-      })
-      .subscribe();
-  }
-}
-
-function registrarAtividade() {
-  tempoInatividade = Date.now();
-
-  if (!navigator.onLine) {
-    atualizarStatusServidor('offline', true);
-    return;
-  }
-
-  const userLogado = obterUsuarioLocal();
-  if (userLogado) {
-    const statusAtual = (userLogado.status || '').toLowerCase();
-    if (statusAtual === 'ausente' || statusAtual === 'ausente_auto') {
-      atualizarStatusServidor('online');
+        })
+        .subscribe();
     }
   }
-}
 
-// Envio garantido no fechamento da página
-function enviarOfflineAoFechar() {
-  const user = obterUsuarioLocal();
-  const sb = obterSupabase();
-  if (!user || !user.id || !sb) return;
+  // Detector de atividade do usuário
+  function registrarAtividade() {
+    tempoUltimaAtividade = Date.now();
 
-  const url = `${sb.supabaseUrl}/rest/v1/usuarios?id=eq.${user.id}`;
-  const payload = JSON.stringify({ status: 'offline', last_seen: new Date().toISOString() });
+    if (!navigator.onLine) {
+      atualizarStatusServidor('offline', true);
+      return;
+    }
 
-  if (navigator.sendBeacon) {
+    if (!estadoMemoria.isManual && estadoMemoria.statusAtual === 'ausente') {
+      atualizarStatusServidor('online', false);
+    }
+  }
+
+  // Envia desacoplamento ao fechar a janela
+  function desconectarAoSair() {
+    const userId = estadoMemoria.userId || obterIdUsuarioLogado();
+    const sb = obterSupabase();
+    if (!userId || !sb) return;
+
+    const url = `${sb.supabaseUrl}/rest/v1/usuarios?id=eq.${userId}`;
+    const payload = JSON.stringify({ status: 'offline', last_seen: new Date().toISOString() });
+
     const headers = {
       'type': 'application/json',
       'apikey': sb.supabaseKey,
@@ -280,94 +287,62 @@ function enviarOfflineAoFechar() {
       'Content-Type': 'application/json',
       'Prefer': 'return=minimal'
     };
-    const blob = new Blob([payload], headers);
-    navigator.sendBeacon(url, blob);
+
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(url, new Blob([payload], headers));
+    }
+  }
+
+  // Eventos de Ciclo de Vida
+  function iniciarListeners() {
+    iniciarMotorPresenca();
+
+    ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'].forEach((evt) => {
+      window.addEventListener(evt, registrarAtividade, { passive: true });
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (estadoMemoria.isManual) return;
+
+      if (document.hidden) {
+        if (estadoMemoria.statusAtual === 'online') {
+          atualizarStatusServidor('ausente', false);
+        }
+      } else {
+        tempoUltimaAtividade = Date.now();
+        if (estadoMemoria.statusAtual === 'ausente') {
+          atualizarStatusServidor('online', false);
+        }
+      }
+    });
+
+    window.addEventListener('beforeunload', desconectarAoSair);
+    window.addEventListener('pagehide', desconectarAoSair);
+
+    // Checagem periódica de inatividade
+    setInterval(() => {
+      if (!navigator.onLine || estadoMemoria.isManual) return;
+
+      if (Date.now() - tempoUltimaAtividade >= CONFIG.LIMITE_INATIVIDADE_MS && !document.hidden) {
+        if (estadoMemoria.statusAtual === 'online') {
+          atualizarStatusServidor('ausente', false);
+        }
+      }
+    }, CONFIG.INTERVALO_VERIFICACAO_MS);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', iniciarListeners);
   } else {
-    fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'apikey': sb.supabaseKey,
-        'Authorization': `Bearer ${sb.supabaseKey}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: payload,
-      keepalive: true
-    }).catch(() => {});
+    iniciarListeners();
   }
-}
 
-function iniciarGerenciadorAutomatico() {
-  iniciarPresenceSupabase();
-
-  const eventosInteracao = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
-  eventosInteracao.forEach((evento) => {
-    window.addEventListener(evento, registrarAtividade, { passive: true });
-  });
-
-  document.addEventListener('visibilitychange', () => {
-    const userLogado = obterUsuarioLocal();
-    if (!userLogado) return;
-    
-    const statusAtual = (userLogado.status || '').toLowerCase();
-
-    if (document.hidden) {
-      if (statusAtual === 'online') {
-        atualizarStatusServidor('ausente');
-      }
-    } else {
-      tempoInatividade = Date.now();
-      if (statusAtual === 'ausente' || statusAtual === 'ausente_auto') {
-        atualizarStatusServidor('online');
-      }
-    }
-  });
-
-  window.addEventListener('offline', () => atualizarStatusServidor('offline', true));
-  window.addEventListener('online', () => {
-    tempoInatividade = Date.now();
-    const userLogado = obterUsuarioLocal();
-    if (userLogado && userLogado.status !== 'dnd') {
-      atualizarStatusServidor('online');
-    }
-  });
-
-  // Gatilho de saída (fechando aba/navegador)
-  window.addEventListener('beforeunload', enviarOfflineAoFechar);
-  window.addEventListener('pagehide', enviarOfflineAoFechar);
-
-  // Intervalo de inatividade a cada 10s
-  setInterval(() => {
-    if (!navigator.onLine) return;
-
-    const userLogado = obterUsuarioLocal();
-    if (!userLogado) return;
-
-    const statusAtual = (userLogado.status || '').toLowerCase();
-
-    if (Date.now() - tempoInatividade >= LIMITE_INATIVIDADE_MS && !document.hidden) {
-      if (statusAtual === 'online') {
-        atualizarStatusServidor('ausente');
-      }
-    }
-  }, 10000);
-
-  // Status Inicial
-  const userLogado = obterUsuarioLocal();
-  if (userLogado && userLogado.status) {
-    atualizarStatusServidor(userLogado.status, true);
-  } else if (navigator.onLine) {
-    atualizarStatusServidor('online', true);
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  iniciarGerenciadorAutomatico();
-});
-
-// Exportações Globais
-window.obterInfoStatus = obterInfoStatus;
-window.obterHtmlStatusDot = obterHtmlStatusDot;
-window.obterHtmlTag = obterHtmlTag;
-window.atualizarStatusServidor = atualizarStatusServidor;
-window.notificarInterfaceStatus = notificarInterfaceStatus;
+  // Interface Pública
+  window.obterInfoStatus = obterInfoStatus;
+  window.obterHtmlStatusDot = obterHtmlStatusDot;
+  window.obterHtmlCustomStatus = obterHtmlCustomStatus;
+  window.obterHtmlTag = obterHtmlTag;
+  window.atualizarStatusServidor = atualizarStatusServidor;
+  window.notificarInterfaceStatus = notificarInterfaceStatus;
+  window.iniciarPresenceSupabase = iniciarMotorPresenca;
+})();

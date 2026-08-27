@@ -1,6 +1,6 @@
 // ==========================================================================
 // MÓDULO HOMECARD & PAINEL DE MEMBROS DA COMUNIDADE (homecard.js)
-// Project Z Enhanced v5.0 | Alta Performance, Supabase Realtime & UI/UX Viva
+// Project Z Enhanced v5.0 | Integração Nativa status.js (int8) & Realtime CDC
 // ==========================================================================
 
 let inscricaoRealtimeUsuarios = null;
@@ -16,32 +16,33 @@ function sanitizarHtmlHomecard(str) {
     .replace(/'/g, '&#039;');
 }
 
-// Mapeamento de Peso Numérico para Ordenação
+// Mapeamento de Peso Numérico para Ordenação na Lista
 function obterPesoStatus(status) {
-  const st = (status || 'offline').toLowerCase();
+  const st = String(status || 'offline').toLowerCase();
   switch (st) {
-    case 'online': 
+    case 'online':
       return 1;
-    case 'ausente': 
-    case 'idle': 
-    case 'ausente_auto': 
+    case 'ausente':
+    case 'idle':
+    case 'ausente_auto':
       return 2;
-    case 'dnd': 
-    case 'ocupado': 
+    case 'dnd':
+    case 'ocupado':
+    case 'nao_perturbe':
       return 3;
-    case 'offline': 
+    case 'offline':
     case 'invisivel':
-    default: 
+    default:
       return 4;
   }
 }
 
-// Resolução Segura do Instância Global do Supabase
+// Resolução Segura da Instância Global do Supabase
 function obterSupabaseHomecard() {
   return window.supabaseClient || window.supabase || window.sb || null;
 }
 
-// Resolução de Usuário do LocalStorage com Fallback
+// Resolução do Usuário no LocalStorage
 function obterUsuarioLocalHomecard() {
   try {
     const raw = localStorage.getItem('usuario_logado') || localStorage.getItem('usuario') || localStorage.getItem('user');
@@ -52,30 +53,20 @@ function obterUsuarioLocalHomecard() {
   return null;
 }
 
-// Renders do Badge de Status em Sincronia com status.js
-function extrairHtmlStatusBadge(usuarioId, statusAtual) {
-  if (typeof window.obterHtmlStatusDot === 'function') {
-    const htmlDot = window.obterHtmlStatusDot(statusAtual);
-    // Injeta dinamicamente data-user-status-id na tag do indicador se status.js já não o tiver feito
-    if (htmlDot.includes('data-user-status-id')) {
-      return `<div class="avatar-status-badge">${htmlDot}</div>`;
-    }
-    return `<div class="avatar-status-badge">${htmlDot.replace('class="status-dot', `data-user-status-id="${usuarioId}" class="status-dot`)}</div>`;
-  }
-  
-  // Fallback visual caso status.js não tenha carregado a tempo
-  const info = window.obterInfoStatus ? window.obterInfoStatus(statusAtual) : { classe: (statusAtual || 'offline').toLowerCase(), label: 'Offline' };
-  return `
-    <div class="avatar-status-badge">
-      <span class="status-dot ${info.classe}" data-user-status-id="${usuarioId}" title="${info.label}"></span>
-    </div>
-  `;
+// Renderiza o indicador de status delegando a construção com data-user-status-id ao status.js
+function renderizarBadgeStatusHomecard(usuarioId, statusAtual) {
+  const st = statusAtual || 'offline';
+  const htmlDot = typeof window.obterHtmlStatusDot === 'function'
+    ? window.obterHtmlStatusDot(st, usuarioId)
+    : `<span class="status-dot ${String(st).toLowerCase()}" data-user-status-id="${usuarioId}"></span>`;
+
+  return `<div class="avatar-status-badge">${htmlDot}</div>`;
 }
 
 // Renderizador Principal do Container Homecard
 async function renderHomeCard(usuario) {
   const user = usuario || obterUsuarioLocalHomecard();
-  if (!user || !user.id) return;
+  if (!user || user.id === undefined) return;
 
   removerHomeCard();
 
@@ -90,14 +81,14 @@ async function renderHomeCard(usuario) {
   const avatarSrc = (user.avatar_url && user.avatar_url.trim() !== '') ? user.avatar_url : defaultAvatar;
   const bannerSrc = (user.banner_url && user.banner_url.trim() !== '') ? user.banner_url : '';
   const molduraSrc = (user.moldura_url && user.moldura_url.trim() !== '') ? user.moldura_url : '';
-  
-  const eCriador = Boolean(user.is_creator);
-  const htmlTag = typeof window.obterHtmlTag === 'function' ? window.obterHtmlTag(user) : '';
-  const htmlStatusBadge = extrairHtmlStatusBadge(user.id, user.status);
 
-  const statusEmoji = user.status_emoji || '💬';
-  const customStatusText = user.custom_status ? sanitizarHtmlHomecard(user.custom_status) : 'Ver ou editar perfil';
-  const statsText = `${statusEmoji} ${customStatusText}`;
+  const eCriador = Boolean(user.is_creator || user.is_criador);
+  const htmlTag = typeof window.obterHtmlTag === 'function' ? window.obterHtmlTag(user) : '';
+  const htmlStatusBadge = renderizarBadgeStatusHomecard(user.id, user.status || 'offline');
+
+  const customStatusText = typeof window.obterHtmlCustomStatus === 'function' && user.custom_status
+    ? window.obterHtmlCustomStatus(user.custom_status, user.status_emoji || '💬')
+    : `<div class="custom-status-text"><span>${user.status_emoji || '💬'} ${user.custom_status ? sanitizarHtmlHomecard(user.custom_status) : 'Ver ou editar perfil'}</span></div>`;
 
   // 2. CONSTRUÇÃO DO CARD DO PRÓPRIO USUÁRIO (MEU CARD)
   const userCard = document.createElement('div');
@@ -127,7 +118,7 @@ async function renderHomeCard(usuario) {
     </div>
     <div class="card-info-section">
       <div class="card-stats-row">
-        <span class="card-stats-text" title="Seu recado atual">${statsText}</span>
+        ${customStatusText}
       </div>
       <div class="card-main-row">
         <span class="card-display-name">${displayNameText}</span>
@@ -140,7 +131,7 @@ async function renderHomeCard(usuario) {
     </button>
   `;
 
-  // Previne que a ação rápida de edição abra o perfil e dispara o modal
+  // Ação rápida de edição de perfil
   const btnEdit = userCard.querySelector('#btn-quick-edit-profile');
   if (btnEdit) {
     btnEdit.onclick = (e) => {
@@ -171,7 +162,7 @@ async function renderHomeCard(usuario) {
   wrapper.appendChild(userCard);
   wrapper.appendChild(serverUsersPanel);
 
-  // Inserção Inteligente no topo do Container de Conteúdo
+  // Inserção no Container de Conteúdo
   const homeContent = document.querySelector('.home-content') || document.getElementById('home-screen');
   if (homeContent) {
     homeContent.insertBefore(wrapper, homeContent.firstChild);
@@ -182,7 +173,7 @@ async function renderHomeCard(usuario) {
   await carregarEIniciarRealtimeUsuarios(user.id);
 }
 
-// Carregamento de Lista com Supabase Realtime e Otimização DOM
+// Carregamento da Lista de Membros e Inscrição em Tempo Real
 async function carregarEIniciarRealtimeUsuarios(usuarioLogadoId) {
   const clientSupabase = obterSupabaseHomecard();
 
@@ -212,16 +203,16 @@ async function carregarEIniciarRealtimeUsuarios(usuarioLogadoId) {
         return;
       }
 
-      // Separa o próprio usuário logado dos demais membros da comunidade
+      // Separa o próprio usuário logado dos demais membros
       const euMesmo = usuarios.find(u => String(u.id) === String(usuarioLogadoId));
       const outrosUsuarios = usuarios.filter(u => String(u.id) !== String(usuarioLogadoId));
 
-      // Ordenação Primária por Status (Online > Ausente > DND > Offline) e Secundária por Display Name / Username
+      // Ordenação: Status (Online > Ausente > DND > Offline) e Nome
       outrosUsuarios.sort((a, b) => {
         const pesoA = obterPesoStatus(a.status);
         const pesoB = obterPesoStatus(b.status);
         if (pesoA !== pesoB) return pesoA - pesoB;
-        
+
         const nomeA = (a.display_name || a.nome || a.username || '').toLowerCase();
         const nomeB = (b.display_name || b.nome || b.username || '').toLowerCase();
         return nomeA.localeCompare(nomeB);
@@ -229,10 +220,10 @@ async function carregarEIniciarRealtimeUsuarios(usuarioLogadoId) {
 
       const listaFinal = euMesmo ? [euMesmo, ...outrosUsuarios] : outrosUsuarios;
 
-      // Cálculo de Métricas (Contagem Real de Ativos vs Total)
+      // Métricas de Usuários Ativos
       const totalOnline = usuarios.filter(u => {
-        const st = (u.status || '').toLowerCase();
-        return st === 'online' || st === 'ausente' || st === 'dnd';
+        const st = String(u.status || '').toLowerCase();
+        return st === 'online' || st === 'ausente' || st === 'dnd' || st === 'ocupado';
       }).length;
 
       if (titleContainer) {
@@ -242,23 +233,23 @@ async function carregarEIniciarRealtimeUsuarios(usuarioLogadoId) {
         `;
       }
 
-      // Fragmento para minimização de Reflows no DOM
       const fragmento = document.createDocumentFragment();
 
       listaFinal.forEach(u => {
         const eUsuarioLogado = String(u.id) === String(usuarioLogadoId);
         const usernameClean = sanitizarHtmlHomecard(u.username || 'usuario');
         const displayNameClean = sanitizarHtmlHomecard(u.display_name || u.nome || usernameClean);
-        
+
         const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(u.username || 'usuario')}`;
         const avatarSrc = (u.avatar_url && u.avatar_url.trim() !== '') ? u.avatar_url : defaultAvatar;
         const molduraSrc = (u.moldura_url && u.moldura_url.trim() !== '') ? u.moldura_url : '';
-        
-        const htmlStatus = extrairHtmlStatusBadge(u.id, u.status);
+
+        const htmlStatus = renderizarBadgeStatusHomecard(u.id, u.status || 'offline');
         const htmlTag = typeof window.obterHtmlTag === 'function' ? window.obterHtmlTag(u) : '';
 
-        const emojiRecado = u.status_emoji || '💬';
-        const recadoTexto = u.custom_status ? sanitizarHtmlHomecard(u.custom_status) : '';
+        const customStatusHtml = typeof window.obterHtmlCustomStatus === 'function' && u.custom_status
+          ? window.obterHtmlCustomStatus(u.custom_status, u.status_emoji || '💬')
+          : (u.custom_status ? `<div class="server-user-custom-status" title="${sanitizarHtmlHomecard(u.custom_status)}"><span>${u.status_emoji || '💬'}</span> <span>${sanitizarHtmlHomecard(u.custom_status)}</span></div>` : '');
 
         const userItem = document.createElement('div');
         userItem.className = `server-user-item ${eUsuarioLogado ? 'is-self' : ''}`;
@@ -288,11 +279,7 @@ async function carregarEIniciarRealtimeUsuarios(usuarioLogadoId) {
               <span class="server-user-display-name">${displayNameClean}</span>
               <span class="server-user-handle">@${usernameClean}</span>
             </div>
-            ${recadoTexto ? `
-              <div class="server-user-custom-status" title="${recadoTexto}">
-                <span>${emojiRecado}</span> <span>${recadoTexto}</span>
-              </div>
-            ` : ''}
+            ${customStatusHtml}
             <div class="server-user-tag-row">
               ${eUsuarioLogado ? '<span class="badge-you">Você</span>' : ''}
               ${htmlTag}
@@ -301,13 +288,14 @@ async function carregarEIniciarRealtimeUsuarios(usuarioLogadoId) {
           ${chatBtnHtml}
         `;
 
-        // Atribuição isolada de evento de chat sem acionar a abertura do perfil
         if (!eUsuarioLogado) {
           const btnChat = userItem.querySelector(`#btn-chat-user-${u.id}`);
           if (btnChat) {
             btnChat.onclick = (e) => {
               e.stopPropagation();
-              if (typeof window.enviarMensagemParaUsuario === 'function') {
+              if (typeof window.seleccionarConversaDirect === 'function') {
+                window.seleccionarConversaDirect(u.id);
+              } else if (typeof window.enviarMensagemParaUsuario === 'function') {
                 window.enviarMensagemParaUsuario(u);
               } else if (typeof window.abrirChatComUsuario === 'function') {
                 window.abrirChatComUsuario(u);
@@ -332,7 +320,7 @@ async function carregarEIniciarRealtimeUsuarios(usuarioLogadoId) {
 
   await atualizarLista();
 
-  // Gerenciamento de Canal Realtime no Supabase
+  // Canal Realtime do Supabase para escutar alterações de usuários
   if (clientSupabase && typeof clientSupabase.channel === 'function') {
     if (inscricaoRealtimeUsuarios) {
       clientSupabase.removeChannel(inscricaoRealtimeUsuarios);
@@ -347,7 +335,7 @@ async function carregarEIniciarRealtimeUsuarios(usuarioLogadoId) {
   }
 }
 
-// Funções de Visibilidade e Limpeza de Recursos
+// Ocultar, Exibir e Limpar Recursos do Homecard
 function ocultarHomeCard() {
   const wrapper = document.getElementById('homecard-wrapper-container');
   if (wrapper) wrapper.classList.add('is-hidden');

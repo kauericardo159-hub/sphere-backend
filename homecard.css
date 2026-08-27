@@ -1,6 +1,6 @@
 /* ==========================================================================
    ESTILOS DO HOMECARD & PAINEL DE MEMBROS (homecard.css)
-   Estilo Project Z & Discord | Totalmente Responsivo & Padronizado
+   Project Z v5.0 | Totalmente Responsivo, GPU Hardware Accelerated & Status Sync
    ========================================================================== */
 
 /* === CONTAINER PRINCIPAL === */
@@ -14,6 +14,7 @@
   padding: 0 14px;
   box-sizing: border-box;
   animation: fadeInHomeCard 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
 }
 
 @keyframes fadeInHomeCard {
@@ -106,19 +107,17 @@
   position: absolute;
   bottom: 1px;
   right: 1px;
-  z-index: 4;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
 }
 
-.card-avatar-section .avatar-status-badge .status-dot,
-.card-avatar-section .avatar-status-badge .status-dot-default {
-  width: 17px;
-  height: 17px;
+.card-avatar-section .avatar-status-badge .status-dot {
+  width: 16px;
+  height: 16px;
   border: 2.5px solid #120a14;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.8);
 }
 
 /* Informações de Texto */
@@ -137,7 +136,7 @@
   align-items: center;
 }
 
-.card-stats-text {
+.card-stats-row .custom-status-text {
   font-size: 0.8rem;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
@@ -146,9 +145,6 @@
   border-radius: 10px;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   max-width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-sizing: border-box;
@@ -177,7 +173,7 @@
   font-weight: 600;
 }
 
-/* Botão de Edição Rápida (Padronizado 32px Circular) */
+/* Botão de Edição Rápida */
 .card-edit-quick-btn {
   background: rgba(0, 0, 0, 0.55);
   border: 1px solid rgba(255, 45, 85, 0.35);
@@ -350,13 +346,12 @@
   position: absolute;
   bottom: 0px;
   right: 0px;
-  z-index: 3;
+  z-index: 5;
 }
 
-.server-user-avatar-wrapper .avatar-status-badge .status-dot,
-.server-user-avatar-wrapper .avatar-status-badge .status-dot-default {
-  width: 15px;
-  height: 15px;
+.server-user-avatar-wrapper .avatar-status-badge .status-dot {
+  width: 14px;
+  height: 14px;
   border: 2px solid #180e1b;
 }
 
@@ -397,8 +392,9 @@
   width: 100%;
 }
 
-/* Recado Personalizado com Emoji */
-.server-user-custom-status {
+/* Recado Personalizado no Carrossel */
+.server-user-custom-status,
+.server-user-info .custom-status-text {
   font-size: 0.68rem;
   color: #e0d0e6;
   background: rgba(0, 0, 0, 0.35);
@@ -411,6 +407,7 @@
   text-overflow: ellipsis;
   margin-top: 2px;
   box-sizing: border-box;
+  justify-content: center;
 }
 
 .server-user-tag-row {
@@ -436,7 +433,7 @@
   line-height: 1;
 }
 
-/* Botão de Enviar Mensagem no Hover (Padronizado 32px Circular) */
+/* Botão de Enviar Mensagem no Hover */
 .server-user-chat-quick-btn {
   position: absolute;
   top: 6px;
@@ -457,7 +454,7 @@
   transform: scale(0.85);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
-  z-index: 5;
+  z-index: 6;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
   padding: 0;
 }
@@ -497,7 +494,7 @@
 }
 
 /* ==========================================================================
-   ADAPTAÇÕES RESPONSIVAS (COMPUTADOR vs. MOBILE)
+   ADAPTAÇÕES RESPONSIVAS
    ========================================================================== */
 
 /* COMPUTADOR (Telas Largas > 768px) */
@@ -544,7 +541,7 @@
     padding: 10px 12px;
   }
 
-  /* Exibe o botão de chat de forma fixa no mobile sem depender de hover */
+  /* Exibe o botão de chat com facilidade de toque no mobile */
   .server-user-chat-quick-btn {
     opacity: 0.9;
     transform: scale(0.9);

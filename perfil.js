@@ -1,7 +1,6 @@
 // ==========================================================================
 // MÓDULO DE PERFIL DE USUÁRIO (perfil.js) - PROJECT Z ENHANCED v5.1
-// Integrado com Pilha de Navegação Dinâmica, Omissão do X no Perfil Próprio,
-// Deeplink, Supabase Realtime e Ações Sociais
+// Integrado com status.js (int8), Pilha de Navegação, Realtime & Social
 // ==========================================================================
 
 (function () {
@@ -107,7 +106,9 @@
 
   function obterMeuIdLogado() {
     try {
-      const usuario = JSON.parse(localStorage.getItem('usuario_logado') || localStorage.getItem('usuario'));
+      const raw = localStorage.getItem('usuario_logado') || localStorage.getItem('usuario') || localStorage.getItem('user');
+      if (!raw) return null;
+      const usuario = JSON.parse(raw);
       return usuario && usuario.id !== undefined && usuario.id !== null ? Number(usuario.id) : null;
     } catch (e) {
       return null;
@@ -151,9 +152,9 @@
   }
 
   function renderizarBadgeCargo(usuario) {
-    if (usuario.is_creator) return `<span class="user-role-badge role-creator" title="Criador da Comunidade"><i class="fa-solid fa-wand-magic-sparkles"></i> Creator</span>`;
+    if (usuario.is_creator || usuario.is_criador) return `<span class="user-role-badge role-creator" title="Criador da Comunidade"><i class="fa-solid fa-wand-magic-sparkles"></i> Creator</span>`;
     if (usuario.is_admin || usuario.role === 'admin') return `<span class="user-role-badge role-admin" title="Administrador da Plataforma"><i class="fa-solid fa-crown"></i> Admin</span>`;
-    if (usuario.role === 'mod') return `<span class="user-role-badge role-mod" title="Moderador"><i class="fa-solid fa-shield-halved"></i> Mod</span>`;
+    if (usuario.role === 'mod' || usuario.is_mod) return `<span class="user-role-badge role-mod" title="Moderador"><i class="fa-solid fa-shield-halved"></i> Mod</span>`;
     return '';
   }
 
@@ -226,9 +227,11 @@
   // ========================================================================
   
   async function abrirPerfil(usuarioInput, ehVoltar = false) {
-    const logado = JSON.parse(localStorage.getItem('usuario_logado') || localStorage.getItem('usuario'));
+    const logadoRaw = localStorage.getItem('usuario_logado') || localStorage.getItem('usuario') || localStorage.getItem('user');
+    const logado = logadoRaw ? JSON.parse(logadoRaw) : null;
+
     let user = usuarioInput || logado;
-    if (!user) return;
+    if (!user || user.id === undefined) return;
 
     const meuId = obterMeuIdLogado();
     const idAlvoNum = Number(user.id);
@@ -303,18 +306,19 @@
       ? `background-image: url('${user.banner_url}');`
       : `background: ${defaultBanner};`;
 
-    const eCriador = Boolean(user.is_creator);
+    const eCriador = Boolean(user.is_creator || user.is_criador);
     const nomeExibicao = user.display_name || user.nome || user.username || 'Usuário';
     const dataMembroTexto = formatarDataMembroDesde(user);
     const tempoDeContaTexto = calcularTempoDeConta(user);
-    const statusObj = obterLabelStatus(user.status);
+    const statusObj = obterLabelStatus(user.status || 'offline');
 
+    // Injeção reativa do indicador de presença com o ID int8 do usuário
     let htmlStatusDot = '';
     if (typeof window.obterHtmlStatusDot === 'function') {
-      const info = window.obterInfoStatus ? window.obterInfoStatus(user.status) : { classe: user.status || 'offline', label: 'Offline' };
-      htmlStatusDot = `<div class="avatar-status-badge"><span class="status-dot ${info.classe}" data-user-status-id="${user.id}" title="${info.label}"></span></div>`;
+      const dotInner = window.obterHtmlStatusDot(user.status || 'offline', user.id);
+      htmlStatusDot = `<div class="avatar-status-badge">${dotInner}</div>`;
     } else {
-      htmlStatusDot = `<div class="avatar-status-badge"><span class="status-dot-default" style="background:${statusObj.cor}"></span></div>`;
+      htmlStatusDot = `<div class="avatar-status-badge"><span class="status-dot offline" data-user-status-id="${user.id}"></span></div>`;
     }
 
     const emojiStatus = user.status_emoji || '💬';
@@ -360,9 +364,6 @@
     let botaoVoltarOuFechar = '';
 
     if (ehMeuPerfil) {
-      // Se for o próprio perfil do usuário logado:
-      // - Se houver histórico de perfis anteriores visitados, mostra o botão "Voltar"
-      // - Caso contrário, OMITIR o botão X completamente (pois não pode fechar seu próprio perfil)
       if (temHistorico) {
         botaoVoltarOuFechar = `
           <button class="btn-fechar-perfil" onclick="window.voltarOuFecharPerfil()" title="Voltar para o perfil anterior">
@@ -371,7 +372,6 @@
         `;
       }
     } else {
-      // Perfil de terceiros: exibe seta para Voltar (se houver histórico) ou o ícone X (se for o primeiro perfil visitado)
       const iconeBotaoTop = temHistorico ? 'fa-arrow-left' : 'fa-xmark';
       const titleBotaoTop = temHistorico ? 'Voltar para o perfil anterior' : 'Fechar Perfil (ESC)';
       botaoVoltarOuFechar = `
