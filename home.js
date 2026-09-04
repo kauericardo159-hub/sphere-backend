@@ -1,55 +1,81 @@
 // ==========================================================================
-// MÓDULO HOME & GERENCIADOR DE TELA (home.js)
-// Project Z v5.0 | Integração Nativa HomeCard, Presence Offline Sync & UI
+// MÓDULO HOME & GERENCIADOR DE TELA (home.js) - SPHERE PRO v5.2
+// Project Z / Sphere | Integração HomeCard, Session Storage & Encerramento Seguro
 // ==========================================================================
 
 function carregarHome(usuario) {
-  if (!usuario) return;
+  if (!usuario) {
+    console.warn("[Home] Tentativa de carregar Home sem usuário válido.");
+    return;
+  }
 
-  // Sincroniza a sessão local caso tenha sido passada diretamente
+  // 1. Sincroniza a sessão local de forma segura
   try {
     localStorage.setItem('usuario_logado', JSON.stringify(usuario));
   } catch (e) {
     console.error("[Home] Erro ao salvar sessão no localStorage:", e);
   }
 
+  // 2. Transição visual entre Auth e Aplicação Principal
   const authCard = document.getElementById('auth-card');
   const homeScreen = document.getElementById('home-screen');
 
   if (authCard) authCard.classList.add('hidden');
   if (homeScreen) homeScreen.classList.remove('hidden');
 
-  // Transfere toda a responsabilidade visual do perfil e lista de membros para o HomeCard
+  // 3. Renderização do HomeCard (Card do Perfil, Lista de Membros e Interações)
   if (typeof window.renderHomeCard === 'function') {
-    window.renderHomeCard(usuario);
+    try {
+      window.renderHomeCard(usuario);
+    } catch (e) {
+      console.error("[Home] Erro ao executar renderHomeCard:", e);
+    }
   }
 
-  // Atualiza outros componentes reativos da interface se existirem
+  // 4. Atualiza demais componentes reativos Globais
   if (typeof window.atualizarComponentesVisiveis === 'function') {
-    window.atualizarComponentesVisiveis();
+    try {
+      window.atualizarComponentesVisiveis();
+    } catch (e) {
+      console.error("[Home] Erro ao atualizar componentes visíveis:", e);
+    }
   }
 }
 
 async function sair() {
-  // 1. Notifica e força o status Offline no PostgreSQL e no Supabase Presence antes de encerrar
+  // 1. Atualiza e força a sincronização do status para Offline
   if (typeof window.atualizarStatusServidor === 'function') {
     try {
       await window.atualizarStatusServidor('offline', true);
     } catch (e) {
       console.warn("[Home] Falha ao atualizar status para offline ao sair:", e);
     }
+  } else if (typeof window.atualizarStatusLocal === 'function') {
+    try {
+      window.atualizarStatusLocal('offline');
+    } catch (e) {
+      console.warn("[Home] Falha ao atualizar status local ao sair:", e);
+    }
   }
 
-  // 2. Desconecta o HomeCard e libera ouvintes em tempo real
+  // 2. Desconecta o HomeCard e encerra Realtime Listeners
   if (typeof window.removerHomeCard === 'function') {
-    window.removerHomeCard();
+    try {
+      window.removerHomeCard();
+    } catch (e) {
+      console.warn("[Home] Falha ao remover HomeCard:", e);
+    }
   }
 
   // 3. Limpa o armazenamento local de sessão
-  localStorage.removeItem('usuario_logado');
-  localStorage.removeItem('usuario');
-  localStorage.removeItem('user');
-  sessionStorage.clear();
+  try {
+    localStorage.removeItem('usuario_logado');
+    localStorage.removeItem('usuario');
+    localStorage.removeItem('user');
+    sessionStorage.clear();
+  } catch (e) {
+    console.error("[Home] Erro ao limpar credenciais salvas:", e);
+  }
 
   // 4. Recarrega a aplicação de forma limpa
   window.location.reload();

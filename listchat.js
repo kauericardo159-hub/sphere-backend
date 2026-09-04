@@ -1,10 +1,12 @@
 // ==========================================================================
-// LIST CHAT MODULE (listchat.js) - GERENCIAMENTO DE RECENTES, PAUSA & PRESENÇA
-// Project Z v5.0 | Realtime Thread Indexing, Pinned Conversations & Mute Rules
+// LIST CHAT MODULE (listchat.js) - SPHERE v5.2
+// Gerenciamento de Recentes, Solicitações, Presença & Integ. verificados.js
 // ==========================================================================
 
 window.listaContatosCache = [];
+window.listaSolicitacoesCache = [];
 let chatsFixadosIDs = JSON.parse(localStorage.getItem('chat_fixados_ids') || '[]');
+let abaListaAtiva = 'todas'; // 'todas' ou 'solicitacoes'
 
 // Helper para Obtenção Segura do Supabase Client
 function obterSupabaseListChat() {
@@ -29,10 +31,11 @@ function sanitizarTexto(str) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
-// Formatação de Data Compacta para Lista
+// Formatação de Data Compacta
 function formatarDataCurta(timestamp) {
   if (!timestamp) return '';
   try {
@@ -47,13 +50,47 @@ function formatarDataCurta(timestamp) {
   }
 }
 
-// Injeção Dinâmica de Estilos da Sidebar e Lista de Conversas
+/**
+ * Renderização de Badges Limpa (Limitado a até 2 ícones)
+ */
+function renderizarBadgesLimposListChat(usuario) {
+  if (!usuario) return '';
+
+  let listaBadges = [];
+  if (usuario.verificados) {
+    if (Array.isArray(usuario.verificados)) {
+      listaBadges = [...usuario.verificados];
+    } else if (typeof usuario.verificados === 'string') {
+      listaBadges = usuario.verificados.split(/[,|]/).map(s => s.trim().toLowerCase());
+    }
+  }
+
+  if ((usuario.is_creator || usuario.is_criador) && !listaBadges.includes('creator')) {
+    listaBadges.unshift('creator');
+  }
+
+  if (usuario.is_verified && !listaBadges.includes('verified')) {
+    listaBadges.push('verified');
+  }
+
+  // Trava para exibir NO MÁXIMO 2 ícones
+  const badgesLimitadas = listaBadges.filter(Boolean).slice(0, 2);
+
+  if (badgesLimitadas.length === 0) return '';
+
+  if (typeof window.obterHtmlBadgesUsuario === 'function') {
+    return window.obterHtmlBadgesUsuario(badgesLimitadas);
+  }
+
+  return '';
+}
+
+// Injeção Dinâmica dos Estilos da Sidebar e Abas
 (function injetarCssListChat() {
   if (document.getElementById('listchat-css')) return;
   const style = document.createElement('style');
   style.id = 'listchat-css';
   style.textContent = `
-    /* Container do Canal e Sidebar */
     .chat-sidebar {
       width: 320px;
       min-width: 320px;
@@ -65,6 +102,57 @@ function formatarDataCurta(timestamp) {
       z-index: 10;
       transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
       overflow: hidden;
+    }
+
+    /* Abas Internas: Directs / Solicitações */
+    .chat-list-tabs-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.25);
+      border-bottom: 1px solid rgba(255, 45, 85, 0.1);
+    }
+
+    .chat-tab-btn {
+      flex: 1;
+      height: 32px;
+      min-height: 32px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #b3a5b8;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+    }
+
+    .chat-tab-btn:hover {
+      background: rgba(255, 45, 85, 0.15);
+      color: #ffffff;
+    }
+
+    .chat-tab-btn.active {
+      background: linear-gradient(135deg, rgba(255, 45, 85, 0.85), rgba(216, 27, 67, 0.85));
+      color: #ffffff;
+      border-color: rgba(255, 45, 85, 0.5);
+      box-shadow: 0 2px 10px rgba(255, 45, 85, 0.3);
+    }
+
+    .chat-tab-badge {
+      background: #ff2d55;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 900;
+      padding: 1px 5px;
+      border-radius: 8px;
     }
 
     .chat-list {
@@ -85,7 +173,7 @@ function formatarDataCurta(timestamp) {
       padding: 8px 10px 4px 10px;
     }
 
-    /* Item Individual de Conversa */
+    /* Item de Conversa */
     .chat-item {
       display: flex;
       align-items: center;
@@ -94,7 +182,7 @@ function formatarDataCurta(timestamp) {
       border-radius: 14px;
       background: transparent;
       cursor: pointer;
-      transition: background 0.2s ease, transform 0.15s ease;
+      transition: background 0.2s ease;
       position: relative;
       user-select: none;
     }
@@ -113,7 +201,6 @@ function formatarDataCurta(timestamp) {
       border-left: 3px solid var(--chat-accent, #ff2d55);
     }
 
-    /* Wrapper do Avatar e Moldura */
     .chat-item-avatar-wrapper {
       position: relative;
       width: 44px;
@@ -149,7 +236,6 @@ function formatarDataCurta(timestamp) {
       right: -2px;
     }
 
-    /* Informações do Contato */
     .chat-item-info {
       flex: 1;
       display: flex;
@@ -163,8 +249,18 @@ function formatarDataCurta(timestamp) {
       align-items: center;
       justify-content: space-between;
       gap: 6px;
+      width: 100%;
     }
 
+    .chat-item-title-group {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      max-width: 170px;
+      overflow: hidden;
+    }
+
+    /* Truncamento Inteligente de Nomes Longos (...) */
     .chat-item-name {
       font-size: 0.88rem;
       font-weight: 700;
@@ -172,12 +268,15 @@ function formatarDataCurta(timestamp) {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      max-width: 130px;
+      display: inline-block;
     }
 
     .chat-item-date {
       font-size: 0.68rem;
       color: #8e7f96;
       white-space: nowrap;
+      margin-left: auto;
     }
 
     .chat-item-bottom {
@@ -196,6 +295,53 @@ function formatarDataCurta(timestamp) {
       flex: 1;
     }
 
+    /* Botões de Ação para Solicitações (Padronizados em 32px) */
+    .request-actions-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .btn-request-action {
+      flex: 1;
+      height: 32px;
+      min-height: 32px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.72rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+      box-sizing: border-box;
+    }
+
+    .btn-request-action.accept {
+      background: #2ed573;
+      color: #000;
+    }
+
+    .btn-request-action.accept:hover {
+      background: #26af5f;
+      transform: scale(1.02);
+    }
+
+    .btn-request-action.reject {
+      background: rgba(255, 71, 87, 0.2);
+      color: #ff4757;
+      border: 1px solid rgba(255, 71, 87, 0.4);
+    }
+
+    .btn-request-action.reject:hover {
+      background: #ff4757;
+      color: #fff;
+    }
+
     .chat-unread-badge {
       background: var(--chat-accent, #ff2d55);
       color: #ffffff;
@@ -208,12 +354,6 @@ function formatarDataCurta(timestamp) {
       box-shadow: 0 2px 8px rgba(255, 45, 85, 0.4);
     }
 
-    .chat-pin-icon, .chat-mute-icon {
-      font-size: 0.7rem;
-      color: #8e7f96;
-    }
-
-    /* Mensagem de Estado Vazio ou Erro */
     .chat-list-empty, .chat-list-error {
       display: flex;
       flex-direction: column;
@@ -230,66 +370,10 @@ function formatarDataCurta(timestamp) {
       font-size: 1.8rem;
       color: rgba(255, 45, 85, 0.4);
     }
-
-    /* Menu de Contexto Flutuante */
-    .chat-context-menu {
-      position: fixed;
-      background: #180c1e;
-      border: 1px solid rgba(255, 45, 85, 0.35);
-      border-radius: 14px;
-      padding: 6px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
-      z-index: 3500;
-      min-width: 180px;
-      animation: fadeInCtx 0.15s ease;
-    }
-
-    @keyframes fadeInCtx {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
-    }
-
-    .chat-context-menu button {
-      background: transparent;
-      border: none;
-      color: #d1c4d6;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      text-align: left;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: background 0.15s ease, color 0.15s ease;
-    }
-
-    .chat-context-menu button:hover {
-      background: rgba(255, 45, 85, 0.2);
-      color: #ffffff;
-    }
-
-    .chat-context-menu button.danger:hover {
-      background: rgba(255, 71, 87, 0.25);
-      color: #ff4757;
-    }
-
-    .chat-menu-title {
-      font-size: 0.65rem;
-      font-weight: 800;
-      color: #8e7f96;
-      text-transform: uppercase;
-      padding: 6px 10px;
-    }
   `;
   document.head.appendChild(style);
 })();
 
-// Alterna a sidebar e aplica modo de otimização/pausa no feed quando aberta
 function alternarSidebarChat(forcarAbertura) {
   const sidebar = document.getElementById('chat-sidebar');
   const overlay = document.getElementById('chat-sidebar-overlay');
@@ -307,9 +391,22 @@ function alternarSidebarChat(forcarAbertura) {
     if (overlay) overlay.classList.remove('open');
     if (feed) feed.classList.remove('chat-feed-paused');
   }
+
+  if (typeof window.sincronizarEstadoBarraNoChat === 'function') {
+    window.sincronizarEstadoBarraNoChat();
+  }
 }
 
-// Carregar e Indexar Lista de Conversas Recentes
+// Desoculta automaticamente uma conversa caso exista nova atividade
+function restaurarChatOcultoSeNecessario(idAlvo) {
+  let removidos = JSON.parse(localStorage.getItem('chat_removidos_ids') || '[]');
+  if (removidos.includes(Number(idAlvo))) {
+    removidos = removidos.filter(id => Number(id) !== Number(idAlvo));
+    localStorage.setItem('chat_removidos_ids', JSON.stringify(removidos));
+  }
+}
+
+// Carregar Lista de Conversas e Separar Solicitações Ponto a Ponto
 async function carregarListaConversas() {
   const listContainer = document.getElementById('chat-list-container');
   if (!listContainer) return;
@@ -318,18 +415,14 @@ async function carregarListaConversas() {
   const clientSupabase = obterSupabaseListChat();
 
   if (!usuarioLogado || !clientSupabase) {
-    listContainer.innerHTML = `
-      <div class="chat-list-error">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-        <span>Conexão indisponível.</span>
-      </div>`;
+    listContainer.innerHTML = `<div class="chat-list-error"><i class="fa-solid fa-triangle-exclamation"></i><span>Conexão indisponível.</span></div>`;
     return;
   }
 
   try {
     const meId = Number(usuarioLogado.id);
 
-    // Header da Sidebar com Botão Circular Uniforme
+    // Header com Botão Notificação
     const headerSidebar = document.querySelector('.chat-sidebar-header');
     if (headerSidebar) {
       headerSidebar.innerHTML = `
@@ -353,26 +446,22 @@ async function carregarListaConversas() {
       .eq('destinatario_id', meId)
       .order('created_at', { ascending: false });
 
-    // Buscar amizades confirmadas
-    const { data: amizades1 } = await clientSupabase
-      .from('amizades')
-      .select('usuario_id_2')
-      .eq('usuario_id_1', meId)
-      .eq('status', 'aceito');
+    // Buscar Amizades Confirmadas
+    const { data: amizades1 } = await clientSupabase.from('amizades').select('usuario_id_2').eq('usuario_id_1', meId).eq('status', 'aceito');
+    const { data: amizades2 } = await clientSupabase.from('amizades').select('usuario_id_1').eq('usuario_id_2', meId).eq('status', 'aceito');
 
-    const { data: amizades2 } = await clientSupabase
-      .from('amizades')
-      .select('usuario_id_1')
-      .eq('usuario_id_2', meId)
-      .eq('status', 'aceito');
+    let amizadesIDs = new Set();
+    if (amizades1) amizades1.forEach(a => amizadesIDs.add(Number(a.usuario_id_2)));
+    if (amizades2) amizades2.forEach(a => amizadesIDs.add(Number(a.usuario_id_1)));
 
     let idsContatosMap = new Map();
+    let totalNaoLidasGeral = 0;
 
     if (msgsEnviadas) {
       msgsEnviadas.forEach(m => {
         const id = Number(m.destinatario_id);
         if (!idsContatosMap.has(id)) {
-          idsContatosMap.set(id, { ultimaMsg: `Você: ${m.conteudo}`, data: m.created_at, naoLidas: 0 });
+          idsContatosMap.set(id, { ultimaMsg: `Você: ${m.conteudo}`, data: m.created_at, naoLidas: 0, euIniciei: true });
         }
       });
     }
@@ -380,65 +469,191 @@ async function carregarListaConversas() {
     if (msgsRecebidas) {
       msgsRecebidas.forEach(m => {
         const id = Number(m.remetente_id);
-        const atual = idsContatosMap.get(id) || { naoLidas: 0 };
+        const atual = idsContatosMap.get(id) || { naoLidas: 0, euIniciei: false };
         const qtdNaoLidas = (!m.lida ? (atual.naoLidas || 0) + 1 : atual.naoLidas || 0);
 
+        if (!m.lida) {
+          totalNaoLidasGeral++;
+          // Se recebeu mensagem não lida, força a desocultação automática do chat
+          restaurarChatOcultoSeNecessario(id);
+        }
+
         if (!atual.data || new Date(m.created_at) > new Date(atual.data)) {
-          idsContatosMap.set(id, { ultimaMsg: m.conteudo, data: m.created_at, naoLidas: qtdNaoLidas });
+          idsContatosMap.set(id, { ultimaMsg: m.conteudo, data: m.created_at, naoLidas: qtdNaoLidas, euIniciei: atual.euIniciei });
         } else {
           idsContatosMap.set(id, { ...atual, naoLidas: qtdNaoLidas });
         }
       });
     }
 
-    if (amizades1) amizades1.forEach(a => { if (!idsContatosMap.has(Number(a.usuario_id_2))) idsContatosMap.set(Number(a.usuario_id_2), { ultimaMsg: 'Inicie a conversa...', data: null, naoLidas: 0 }); });
-    if (amizades2) amizades2.forEach(a => { if (!idsContatosMap.has(Number(a.usuario_id_1))) idsContatosMap.set(Number(a.usuario_id_1), { ultimaMsg: 'Inicie a conversa...', data: null, naoLidas: 0 }); });
-
-    if (window.chatTargetAtual && window.chatTargetAtual.id) {
-      const targetActiveId = Number(window.chatTargetAtual.id);
-      if (!idsContatosMap.has(targetActiveId)) {
-        idsContatosMap.set(targetActiveId, { ultimaMsg: 'Inicie a conversa...', data: new Date().toISOString(), naoLidas: 0 });
+    amizadesIDs.forEach(id => {
+      if (!idsContatosMap.has(id)) {
+        idsContatosMap.set(id, { ultimaMsg: 'Inicie a conversa...', data: null, naoLidas: 0, euIniciei: false });
       }
-    }
+    });
 
     const idsValidos = Array.from(idsContatosMap.keys()).filter(id => !isNaN(id) && id > 0 && id !== meId);
-    const chatsRemovidosIDs = JSON.parse(localStorage.getItem('chat_removidos_ids') || '[]');
+    let chatsRemovidosIDs = JSON.parse(localStorage.getItem('chat_removidos_ids') || '[]');
+    const aceitosManualmenteIDs = JSON.parse(localStorage.getItem('chat_aceitos_manual_ids') || '[]');
+    
     const idsFinais = idsValidos.filter(id => !chatsRemovidosIDs.includes(id));
 
     if (idsFinais.length === 0) {
-      listContainer.innerHTML = `
-        <div class="chat-list-empty">
-          <i class="fa-solid fa-comments"></i>
-          <span>Nenhuma conversa recente.</span>
-        </div>`;
+      listContainer.innerHTML = `<div class="chat-list-empty"><i class="fa-solid fa-comments"></i><span>Nenhuma conversa recente.</span></div>`;
       return;
     }
 
-    const { data: usuarios, error } = await clientSupabase
-      .from('usuarios')
-      .select('*')
-      .in('id', idsFinais);
+    const { data: usuarios } = await clientSupabase.from('usuarios').select('*').in('id', idsFinais);
+    if (!usuarios) return;
 
-    if (error || !usuarios) {
-      listContainer.innerHTML = `<div class="chat-list-error">Falha ao carregar conversas.</div>`;
-      return;
+    let normais = [];
+    let solicitacoes = [];
+
+    usuarios.forEach(u => {
+      const idNum = Number(u.id);
+      const info = idsContatosMap.get(idNum);
+      const eAmigo = amizadesIDs.has(idNum);
+      const euIniciei = info ? info.euIniciei : false;
+      const aceitoManual = aceitosManualmenteIDs.includes(idNum);
+
+      const itemData = {
+        ...u,
+        ultimaMsg: info?.ultimaMsg || 'Inicie a conversa...',
+        dataUltimaMsg: info?.data || null,
+        naoLidas: info?.naoLidas || 0
+      };
+
+      if (!eAmigo && !euIniciei && !aceitoManual) {
+        solicitacoes.push(itemData);
+      } else {
+        normais.push(itemData);
+      }
+    });
+
+    window.listaContatosCache = normais;
+    window.listaSolicitacoesCache = solicitacoes;
+
+    // Atualiza a badge vermelha na pílula flutuante
+    if (typeof window.atualizarBadgeNotificacaoChat === 'function') {
+      window.atualizarBadgeNotificacaoChat(totalNaoLidasGeral + solicitacoes.length);
     }
 
-    window.listaContatosCache = usuarios.map(u => ({
-      ...u,
-      ultimaMsg: idsContatosMap.get(Number(u.id))?.ultimaMsg || 'Inicie a conversa...',
-      dataUltimaMsg: idsContatosMap.get(Number(u.id))?.data || null,
-      naoLidas: idsContatosMap.get(Number(u.id))?.naoLidas || 0
-    }));
-
-    renderizarListaContatos(window.listaContatosCache);
+    renderizarAbaEListaChat();
 
   } catch (err) {
     console.error("[ListChat] Erro ao carregar contatos:", err);
   }
 }
 
-// Verificar se o Chat Está Silenciado
+function alternarAbaListaChat(aba) {
+  abaListaAtiva = aba;
+  renderizarAbaEListaChat();
+}
+
+function renderizarAbaEListaChat() {
+  const sidebar = document.getElementById('chat-sidebar');
+  if (!sidebar) return;
+
+  let tabsRow = document.getElementById('chat-list-tabs-row');
+  if (!tabsRow) {
+    tabsRow = document.createElement('div');
+    tabsRow.id = 'chat-list-tabs-row';
+    tabsRow.className = 'chat-list-tabs-row';
+    const searchBox = sidebar.querySelector('.chat-sidebar-search');
+    if (searchBox) searchBox.after(tabsRow);
+  }
+
+  const qtdSolicitacoes = window.listaSolicitacoesCache ? window.listaSolicitacoesCache.length : 0;
+
+  tabsRow.innerHTML = `
+    <button class="chat-tab-btn ${abaListaAtiva === 'todas' ? 'active' : ''}" onclick="alternarAbaListaChat('todas')">
+      Directs
+    </button>
+    <button class="chat-tab-btn ${abaListaAtiva === 'solicitacoes' ? 'active' : ''}" onclick="alternarAbaListaChat('solicitacoes')">
+      Solicitações ${qtdSolicitacoes > 0 ? `<span class="chat-tab-badge">${qtdSolicitacoes}</span>` : ''}
+    </button>
+  `;
+
+  if (abaListaAtiva === 'solicitacoes') {
+    renderizarListaSolicitacoes(window.listaSolicitacoesCache);
+  } else {
+    renderizarListaContatos(window.listaContatosCache);
+  }
+}
+
+function renderizarListaSolicitacoes(solicitacoes) {
+  const listContainer = document.getElementById('chat-list-container');
+  if (!listContainer) return;
+
+  if (!solicitacoes || solicitacoes.length === 0) {
+    listContainer.innerHTML = `
+      <div class="chat-list-empty">
+        <i class="fa-solid fa-user-clock"></i>
+        <span>Nenhuma solicitação de mensagem pendente.</span>
+      </div>`;
+    return;
+  }
+
+  listContainer.innerHTML = `
+    <div class="chat-list-section-title">Pedidos de Conversa (${solicitacoes.length})</div>
+    ` + solicitacoes.map(u => {
+      const idNum = Number(u.id);
+      const usernameClean = sanitizarTexto(u.username || u.nome || 'user');
+      const nameDisplay = sanitizarTexto(u.display_name || u.nome || u.username || 'Usuário');
+      const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(usernameClean)}`;
+      const avatar = (u.avatar_url && u.avatar_url.trim() !== '') ? u.avatar_url : defaultAvatar;
+      const horaFormatada = formatarDataCurta(u.dataUltimaMsg);
+      const htmlBadges = renderizarBadgesLimposListChat(u);
+
+      return `
+        <div class="chat-item">
+          <div class="chat-item-avatar-wrapper">
+            <img src="${avatar}" class="chat-item-avatar" onerror="this.onerror=null; this.src='${defaultAvatar}';" alt="${usernameClean}">
+          </div>
+
+          <div class="chat-item-info">
+            <div class="chat-item-top">
+              <div class="chat-item-title-group">
+                <span class="chat-item-name" title="${nameDisplay}">${nameDisplay}</span>
+                ${htmlBadges}
+              </div>
+              ${horaFormatada ? `<span class="chat-item-date">${horaFormatada}</span>` : ''}
+            </div>
+            <div class="chat-item-bottom">
+              <span class="chat-item-last-text">${sanitizarTexto(u.ultimaMsg)}</span>
+            </div>
+            <div class="request-actions-row">
+              <button class="btn-request-action accept" onclick="aceitarSolicitacaoChat(${idNum})"><i class="fa-solid fa-check"></i> Aceitar</button>
+              <button class="btn-request-action reject" onclick="recusarSolicitacaoChat(${idNum})"><i class="fa-solid fa-xmark"></i> Recusar</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+}
+
+function aceitarSolicitacaoChat(idAlvo) {
+  let aceitos = JSON.parse(localStorage.getItem('chat_aceitos_manual_ids') || '[]');
+  if (!aceitos.includes(idAlvo)) aceitos.push(idAlvo);
+  localStorage.setItem('chat_aceitos_manual_ids', JSON.stringify(aceitos));
+
+  restaurarChatOcultoSeNecessario(idAlvo);
+
+  carregarListaConversas().then(() => {
+    if (typeof window.seleccionarConversaDirect === 'function') {
+      window.seleccionarConversaDirect(idAlvo);
+    }
+  });
+}
+
+function recusarSolicitacaoChat(idAlvo) {
+  let removidos = JSON.parse(localStorage.getItem('chat_removidos_ids') || '[]');
+  if (!removidos.includes(idAlvo)) removidos.push(idAlvo);
+  localStorage.setItem('chat_removidos_ids', JSON.stringify(removidos));
+
+  carregarListaConversas();
+}
+
 function verificarStatusSilencioso(idNum) {
   const mutesMap = JSON.parse(localStorage.getItem('chat_mutes_map') || '{}');
   const expiraEm = mutesMap[idNum];
@@ -447,17 +662,15 @@ function verificarStatusSilencioso(idNum) {
   return Date.now() < Number(expiraEm);
 }
 
-// Renderizar Lista de Contatos
 function renderizarListaContatos(usuarios) {
   const listContainer = document.getElementById('chat-list-container');
   if (!listContainer) return;
 
   if (!usuarios || usuarios.length === 0) {
-    listContainer.innerHTML = `<div class="chat-list-empty">Nenhum contato encontrado.</div>`;
+    listContainer.innerHTML = `<div class="chat-list-empty"><i class="fa-solid fa-comments"></i><span>Nenhum contato encontrado.</span></div>`;
     return;
   }
 
-  // Ordenação: Fixados primeiro, depois por data mais recente
   const ordenados = [...usuarios].sort((a, b) => {
     const aFixado = chatsFixadosIDs.includes(Number(a.id));
     const bFixado = chatsFixadosIDs.includes(Number(b.id));
@@ -487,17 +700,12 @@ function renderizarListaContatos(usuarios) {
       const estaSilenciado = verificarStatusSilencioso(idNum);
       const horaFormatada = formatarDataCurta(u.dataUltimaMsg);
 
-      // Renderizadores com Suporte Nativo ao status.js
       const htmlStatusDot = typeof window.obterHtmlStatusDot === 'function' 
-        ? `<div class="avatar-status-badge">${window.obterHtmlStatusDot(u.status || 'offline')}</div>` 
+        ? `<div class="avatar-status-badge">${window.obterHtmlStatusDot(u.status || 'offline', u.id)}</div>` 
         : `<div class="avatar-status-badge"><span class="status-dot offline"></span></div>`;
 
-      const htmlTagUser = typeof window.obterHtmlTag === 'function' ? window.obterHtmlTag(u) : '';
-      
-      const textoCustomStatus = u.custom_status || u.frase_status || '';
-      const htmlCustomStatus = (typeof window.obterHtmlCustomStatus === 'function' && textoCustomStatus) 
-        ? window.obterHtmlCustomStatus(textoCustomStatus, u.custom_status_emoji || '💬') 
-        : '';
+      // Injeção de no máximo 2 badges pelo verificados.js
+      const htmlBadges = renderizarBadgesLimposListChat(u);
 
       return `
         <div class="chat-item ${isSelected ? 'active' : ''} ${isFixado ? 'pinned' : ''}" 
@@ -512,13 +720,14 @@ function renderizarListaContatos(usuarios) {
 
           <div class="chat-item-info">
             <div class="chat-item-top">
-              <span class="chat-item-name">${nameDisplay}</span>
-              ${htmlTagUser}
+              <div class="chat-item-title-group">
+                <span class="chat-item-name" title="${nameDisplay}">${nameDisplay}</span>
+                ${htmlBadges}
+              </div>
               ${horaFormatada ? `<span class="chat-item-date">${horaFormatada}</span>` : ''}
               ${isFixado ? '<i class="fa-solid fa-thumbtack chat-pin-icon" title="Fixado"></i>' : ''}
               ${estaSilenciado ? '<i class="fa-solid fa-bell-slash chat-mute-icon" title="Silenciado"></i>' : ''}
             </div>
-            ${htmlCustomStatus}
             <div class="chat-item-bottom">
               <span class="chat-item-last-text" id="contact-last-msg-${idNum}">${sanitizarTexto(u.ultimaMsg)}</span>
               ${(u.naoLidas > 0 && !estaSilenciado && !isSelected) ? `<span class="chat-unread-badge">${u.naoLidas > 99 ? '99+' : u.naoLidas}</span>` : ''}
@@ -529,25 +738,27 @@ function renderizarListaContatos(usuarios) {
     }).join('');
 }
 
-// Evento de Clique em um Contato da Lista
 function cliqueItemContato(idAlvo) {
+  restaurarChatOcultoSeNecessario(idAlvo);
   if (typeof window.seleccionarConversaDirect === 'function') {
     window.seleccionarConversaDirect(idAlvo);
   }
 }
 
-// Filtro Instantâneo por Texto
 function filtrarContatosChat(termo) {
   const t = termo.toLowerCase().trim();
-  const filtrados = (window.listaContatosCache || []).filter(u => {
+  const alvo = abaListaAtiva === 'solicitacoes' ? window.listaSolicitacoesCache : window.listaContatosCache;
+  const filtrados = (alvo || []).filter(u => {
     const nome = (u.display_name || u.nome || u.username || '').toLowerCase();
     const handle = (u.username || '').toLowerCase();
     return nome.includes(t) || handle.includes(t);
   });
-  renderizarListaContatos(filtrados);
+
+  if (abaListaAtiva === 'solicitacoes') renderizarListaSolicitacoes(filtrados);
+  else renderizarListaContatos(filtrados);
 }
 
-// Menu de Contexto (Botão Direito)
+// Menu de Contexto
 function abrirMenuContextoContato(event, idAlvo, nomeAlvo) {
   const antigo = document.getElementById('chat-context-menu');
   if (antigo) antigo.remove();
@@ -562,27 +773,16 @@ function abrirMenuContextoContato(event, idAlvo, nomeAlvo) {
   menu.style.left = `${Math.min(event.clientX, window.innerWidth - 180)}px`;
 
   menu.innerHTML = `
-    <button onclick="alternarFixarChat(${idAlvo})">
-      <i class="fa-solid fa-thumbtack"></i> ${isFixado ? 'Desafixar Conversa' : 'Fixar no Topo'}
-    </button>
-    <button onclick="abrirSubmenuSilenciar(event, ${idAlvo})">
-      <i class="fa-solid fa-bell-slash"></i> ${estaSilenciado ? 'Desmutar Chat' : 'Silenciar Chat'}
-    </button>
-    <button class="danger" onclick="removerChatDaLista(${idAlvo})">
-      <i class="fa-solid fa-trash"></i> Ocultar Conversa
-    </button>
+    <button onclick="alternarFixarChat(${idAlvo})"><i class="fa-solid fa-thumbtack"></i> ${isFixado ? 'Desafixar Conversa' : 'Fixar no Topo'}</button>
+    <button onclick="abrirSubmenuSilenciar(event, ${idAlvo})"><i class="fa-solid fa-bell-slash"></i> ${estaSilenciado ? 'Desmutar Chat' : 'Silenciar Chat'}</button>
+    <button class="danger" onclick="removerChatDaLista(${idAlvo})"><i class="fa-solid fa-trash"></i> Ocultar Conversa</button>
   `;
 
   document.body.appendChild(menu);
-
-  const fecharMenu = () => {
-    menu.remove();
-    document.removeEventListener('click', fecharMenu);
-  };
+  const fecharMenu = () => { menu.remove(); document.removeEventListener('click', fecharMenu); };
   setTimeout(() => document.addEventListener('click', fecharMenu), 10);
 }
 
-// Submenu para Mute com Opções de Duração
 function abrirSubmenuSilenciar(event, idAlvo) {
   event.stopPropagation();
   const menuAntigo = document.getElementById('chat-context-menu');
@@ -606,49 +806,33 @@ function abrirSubmenuSilenciar(event, idAlvo) {
   `;
 
   document.body.appendChild(submenu);
-
-  const fecharSubmenu = () => {
-    submenu.remove();
-    document.removeEventListener('click', fecharSubmenu);
-  };
+  const fecharSubmenu = () => { submenu.remove(); document.removeEventListener('click', fecharSubmenu); };
   setTimeout(() => document.addEventListener('click', fecharSubmenu), 10);
 }
 
-// Aplicar Regra de Mute Temporário ou Permanente
 function aplicarMuteChat(idAlvo, duracao) {
   let mutesMap = JSON.parse(localStorage.getItem('chat_mutes_map') || '{}');
-  
-  if (duracao === 0) {
-    delete mutesMap[idAlvo];
-  } else if (duracao === 'sempre') {
-    mutesMap[idAlvo] = 'sempre';
-  } else {
-    mutesMap[idAlvo] = Date.now() + duracao;
-  }
+  if (duracao === 0) delete mutesMap[idAlvo];
+  else if (duracao === 'sempre') mutesMap[idAlvo] = 'sempre';
+  else mutesMap[idAlvo] = Date.now() + duracao;
 
   localStorage.setItem('chat_mutes_map', JSON.stringify(mutesMap));
   renderizarListaContatos(window.listaContatosCache);
 }
 
-// Alternar Estado de Conversa Fixada
 function alternarFixarChat(idAlvo) {
-  if (chatsFixadosIDs.includes(idAlvo)) {
-    chatsFixadosIDs = chatsFixadosIDs.filter(id => id !== idAlvo);
-  } else {
-    chatsFixadosIDs.push(idAlvo);
-  }
+  if (chatsFixadosIDs.includes(idAlvo)) chatsFixadosIDs = chatsFixadosIDs.filter(id => id !== idAlvo);
+  else chatsFixadosIDs.push(idAlvo);
+
   localStorage.setItem('chat_fixados_ids', JSON.stringify(chatsFixadosIDs));
   renderizarListaContatos(window.listaContatosCache);
 }
 
-// Remover/Ocultar Conversa da Lista Recente
 function removerChatDaLista(idAlvo) {
   let removidos = JSON.parse(localStorage.getItem('chat_removidos_ids') || '[]');
-  if (!removidos.includes(idAlvo)) {
-    removidos.push(idAlvo);
-    localStorage.setItem('chat_removidos_ids', JSON.stringify(removidos));
-  }
-  
+  if (!removidos.includes(idAlvo)) removidos.push(idAlvo);
+  localStorage.setItem('chat_removidos_ids', JSON.stringify(removidos));
+
   if (window.chatTargetAtual && Number(window.chatTargetAtual.id) === idAlvo) {
     window.chatTargetAtual = null;
     localStorage.removeItem('chat_ultimo_target_id');
@@ -668,3 +852,7 @@ window.removerChatDaLista = removerChatDaLista;
 window.cliqueItemContato = cliqueItemContato;
 window.abrirSubmenuSilenciar = abrirSubmenuSilenciar;
 window.aplicarMuteChat = aplicarMuteChat;
+window.alternarAbaListaChat = alternarAbaListaChat;
+window.aceitarSolicitacaoChat = aceitarSolicitacaoChat;
+window.recusarSolicitacaoChat = recusarSolicitacaoChat;
+window.restaurarChatOcultoSeNecessario = restaurarChatOcultoSeNecessario;

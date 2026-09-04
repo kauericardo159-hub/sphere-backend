@@ -1,6 +1,6 @@
 // ==========================================================================
 // CHAT SYSTEM CORE (chat.js) - CORE & STATE ORCHESTRATOR
-// Project Z v5.0 | Supabase Realtime, Typing Smart Timeout & Anti-Memory Leak
+// Sphere v5.0 | Supabase Realtime, Dynamic Title & Bottom Bar Sync
 // ==========================================================================
 
 window.chatTargetAtual = null;
@@ -80,6 +80,17 @@ function fecharInterfaceChat() {
   if (container) container.remove();
 
   cancelarInscricaoTyping();
+
+  // Notifica o sistema para restaurar a Bottom Bar e o título padrão
+  if (typeof window.sincronizarEstadoBarraNoChat === 'function') {
+    window.sincronizarEstadoBarraNoChat();
+  } else if (typeof window.alternarVisibilidadeBottomBar === 'function') {
+    window.alternarVisibilidadeBottomBar(true);
+  }
+
+  if (typeof window.atualizarTituloAbaSite === 'function') {
+    window.atualizarTituloAbaSite();
+  }
 }
 
 function iniciarChamadaVozHeader() {
@@ -119,6 +130,16 @@ function seleccionarConversaDirect(usuarioInput) {
   };
 
   localStorage.setItem('chat_ultimo_target_id', String(idNum));
+
+  // Atualiza o título da aba do navegador para o usuário atual
+  if (typeof window.atualizarTituloAbaSite === 'function') {
+    window.atualizarTituloAbaSite(`Sphere - Conversando com @${usernameClean}`);
+  }
+
+  // Oculta a Bottom Bar durante a conversa ativa
+  if (typeof window.sincronizarEstadoBarraNoChat === 'function') {
+    window.sincronizarEstadoBarraNoChat();
+  }
 
   const feed = document.getElementById('chat-messages-feed');
   if (feed) {
@@ -172,6 +193,26 @@ function redefinirEstadoChatVazio() {
         <i class="fa-solid fa-comments chat-empty-icon"></i>
         <p>Selecione um amigo ou conversa para começar a interagir.</p>
       </div>`;
+  }
+
+  // Restaura o título padrão do chat no navegador
+  if (typeof window.atualizarTituloAbaSite === 'function') {
+    window.atualizarTituloAbaSite('Sphere - Mensagens');
+  }
+
+  // Exibe a Bottom Bar ao estar na lista de conversas
+  if (typeof window.sincronizarEstadoBarraNoChat === 'function') {
+    window.sincronizarEstadoBarraNoChat();
+  } else if (typeof window.alternarVisibilidadeBottomBar === 'function') {
+    window.alternarVisibilidadeBottomBar(true);
+  }
+}
+
+function voltarParaListaConversas() {
+  localStorage.removeItem('chat_ultimo_target_id');
+  redefinirEstadoChatVazio();
+  if (typeof window.alternarSidebarChat === 'function') {
+    window.alternarSidebarChat(true);
   }
 }
 
@@ -249,7 +290,6 @@ function exibirIndicadorDigitando(isTyping) {
       <span><strong>@${window.chatTargetAtual.username}</strong> está digitando...</span>
     `;
 
-    // Timeout de segurança: Esconde o indicador se não houver novos eventos em 3.5s
     typingTimeoutId = setTimeout(() => {
       indicator.style.display = 'none';
     }, 3500);
@@ -269,7 +309,6 @@ async function carregarMensagensFeedSilencioso(targetIdEsperado) {
   try {
     const meId = Number(usuarioLogado.id);
 
-    // Marca as mensagens do remetente como lidas
     await clientSupabase
       .from('mensagens')
       .update({ lida: true })
@@ -323,6 +362,7 @@ window.fecharInterfaceChat = fecharInterfaceChat;
 window.seleccionarConversaDirect = seleccionarConversaDirect;
 window.cliqueHeaderTarget = cliqueHeaderTarget;
 window.redefinirEstadoChatVazio = redefinirEstadoChatVazio;
+window.voltarParaListaConversas = voltarParaListaConversas;
 window.carregarMensagensFeedSilencioso = carregarMensagensFeedSilencioso;
 window.emitirStatusDigitando = emitirStatusDigitando;
 window.iniciarChamadaVozHeader = iniciarChamadaVozHeader;

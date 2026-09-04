@@ -1,5 +1,6 @@
 // ==========================================================================
-// MÓDULO DE AUTENTICAÇÃO E REGISTRO (auth.js) - PROJECT Z ENHANCED
+// MÓDULO DE AUTENTICAÇÃO E REGISTRO (auth.js) - SPHERE PRO v5.2
+// Turnstile Anti-Bot, Rate-Limiting Local, Troca Direta & Galeria
 // ==========================================================================
 
 const SUPABASE_URL = "https://phvnxlogznbplynwflch.supabase.co";
@@ -11,8 +12,27 @@ window.supabaseClient = supabaseClient;
 let etapaCriacaoAtual = 1;
 let usernameEstaLivre = false;
 let timeoutDebounceUsername = null;
+let avatarBase64Selecionado = null;
+let turnstileToken = null;
 
-// Sanitização de HTML
+// Configuração de Rate Limiting (Máximo de 5 tentativas a cada 60s)
+const RATE_LIMIT_CONFIG = {
+  MAX_TENTATIVAS: 5,
+  JANELA_TEMPO_MS: 60 * 1000
+};
+
+// Callback global do Cloudflare Turnstile
+window.onloadTurnstileCallback = function () {
+  if (window.turnstile) {
+    window.turnstile.render('#turnstile-container', {
+      sitekey: '1x00000000000000000000AA', // Substitua pela sua chave pública Turnstile
+      callback: function (token) {
+        turnstileToken = token;
+      }
+    });
+  }
+};
+
 function sanitizarHtmlAuth(str) {
   if (!str) return '';
   return String(str)
@@ -23,20 +43,43 @@ function sanitizarHtmlAuth(str) {
     .replace(/'/g, '&#039;');
 }
 
-// Alterna entre as telas principais (Login / Criar)
+// Controle de Rate Limiting Local contra Brute-Force
+function verificarRateLimit() {
+  const agora = Date.now();
+  let tentativas = JSON.parse(localStorage.getItem('sphere_auth_attempts') || '[]');
+  tentativas = tentativas.filter(t => agora - t < RATE_LIMIT_CONFIG.JANELA_TEMPO_MS);
+
+  if (tentativas.length >= RATE_LIMIT_CONFIG.MAX_TENTATIVAS) {
+    const tempoRestante = Math.ceil((RATE_LIMIT_CONFIG.JANELA_TEMPO_MS - (agora - tentativas[0])) / 1000);
+    exibirMensagem(`Muitas tentativas registradas. Aguarde ${tempoRestante}s para tentar novamente.`);
+    return false;
+  }
+
+  tentativas.push(agora);
+  localStorage.setItem('sphere_auth_attempts', JSON.stringify(tentativas));
+  return true;
+}
+
 function mostrarTela(tela) {
   const formLogin = document.getElementById('form-login');
   const formCriar = document.getElementById('form-criar');
+  const telaInicialButtons = document.getElementById('auth-initial-buttons');
   
   limparMensagens();
 
   if (tela === 'criar') {
+    if (telaInicialButtons) telaInicialButtons.classList.add('hidden');
     if (formLogin) formLogin.classList.add('hidden');
     if (formCriar) formCriar.classList.remove('hidden');
     resetarWizardCriacao();
-  } else {
+  } else if (tela === 'login') {
+    if (telaInicialButtons) telaInicialButtons.classList.add('hidden');
     if (formCriar) formCriar.classList.add('hidden');
     if (formLogin) formLogin.classList.remove('hidden');
+  } else {
+    if (formLogin) formLogin.classList.add('hidden');
+    if (formCriar) formCriar.classList.add('hidden');
+    if (telaInicialButtons) telaInicialButtons.classList.remove('hidden');
     carregarContasSalvas();
   }
 }
@@ -45,7 +88,7 @@ function exibirMensagem(texto, tipo = 'error') {
   const msgErro = document.getElementById('msg-erro');
   if (msgErro) {
     msgErro.innerText = texto;
-    msgErro.className = tipo === 'success' ? 'success-msg' : 'error';
+    msgErro.className = tipo === 'success' ? 'success-msg' : 'error-msg';
   }
 }
 
@@ -53,7 +96,7 @@ function limparMensagens() {
   const msgErro = document.getElementById('msg-erro');
   if (msgErro) {
     msgErro.innerText = '';
-    msgErro.className = 'error';
+    msgErro.className = 'error-msg';
   }
 }
 
@@ -64,14 +107,13 @@ function alternarEstadoBotao(botao, carregando, textoPadrao) {
     if (!botao.dataset.originalHtml) {
       botao.dataset.originalHtml = botao.innerHTML;
     }
-    botao.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Aguarde...`;
+    botao.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processando...`;
   } else {
     botao.disabled = false;
     botao.innerHTML = botao.dataset.originalHtml || textoPadrao || 'Confirmar';
   }
 }
 
-// Alternar Visibilidade da Senha
 function alternarVisibilidadeSenha(inputId, iconeId) {
   const input = document.getElementById(inputId);
   const icone = document.getElementById(iconeId);
@@ -92,15 +134,12 @@ function alternarVisibilidadeSenha(inputId, iconeId) {
   }
 }
 
-// Validar e Checar Username Único em Tempo Real no Supabase
 function validarUsername(input) {
-  // Limpa caracteres especiais, permite apenas letras, números, _ e -
   input.value = input.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
   const username = input.value.trim();
   const feedback = document.getElementById('username-check-feedback');
 
   usernameEstaLivre = false;
-
   if (timeoutDebounceUsername) clearTimeout(timeoutDebounceUsername);
 
   if (!username) {
@@ -139,7 +178,6 @@ function validarUsername(input) {
         return;
       }
 
-      // Se encontrou algum registro, o nome já existe
       if (data && data.length > 0) {
         if (feedback) {
           feedback.className = 'username-feedback error';
@@ -149,20 +187,108 @@ function validarUsername(input) {
       } else {
         if (feedback) {
           feedback.className = 'username-feedback success';
-          feedback.innerHTML = '<i class="fa-solid fa-circle-check"></i> @username livre e disponível!';
+          feedback.innerHTML = '<i class="fa-solid fa-circle-check"></i> @username disponível!';
         }
         usernameEstaLivre = true;
       }
     } catch (err) {
-      console.error("Falha ao conectar no Supabase para checar username:", err);
+      console.error("Falha ao checar username:", err);
     }
   }, 350);
 }
 
-// ==========================================================================
-// CONTAS SALVAS NO LOCALSTORAGE
-// ==========================================================================
+// SELEÇÃO DE AVATAR LOCAL DA GALERIA
+function abrirSeletorGaleriaAvatar() {
+  const inputEl = document.getElementById('input-galeria-avatar');
+  if (inputEl) inputEl.click();
+}
 
+function processarAvatarGaleriaAuth(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+
+  if (file.size > 8 * 1024 * 1024) {
+    exibirMensagem("A imagem de perfil deve ter no máximo 8MB.");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const srcOriginal = e.target.result;
+    
+    if (file.type === 'image/gif') {
+      avatarBase64Selecionado = srcOriginal;
+      atualizarPreviewAvatarDOM(srcOriginal);
+      return;
+    }
+
+    const modalCrop = document.createElement('div');
+    modalCrop.id = 'auth-crop-modal';
+    modalCrop.className = 'policy-modal-overlay';
+    modalCrop.innerHTML = `
+      <div class="policy-modal-card" style="max-width: 400px; text-align: center;">
+        <div class="policy-modal-header">
+          <h2><i class="fa-solid fa-crop-simple"></i> Recortar Foto de Perfil</h2>
+        </div>
+        <div style="max-height: 280px; overflow: hidden; margin: 12px 0;">
+          <img id="auth-img-crop" src="${srcOriginal}" style="max-width: 100%; display: block;" />
+        </div>
+        <div class="policy-modal-actions">
+          <button class="btn-policy-action sec" id="btn-cancel-auth-crop">Cancelar</button>
+          <button class="btn-policy-action primary" id="btn-apply-auth-crop"><i class="fa-solid fa-check"></i> Recortar e Usar</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalCrop);
+
+    let cropper = null;
+    const imgElem = document.getElementById('auth-img-crop');
+
+    const carregarCropper = () => {
+      if (window.Cropper) {
+        cropper = new window.Cropper(imgElem, { aspectRatio: 1, viewMode: 1, background: false });
+      } else {
+        avatarBase64Selecionado = srcOriginal;
+        atualizarPreviewAvatarDOM(srcOriginal);
+        modalCrop.remove();
+      }
+    };
+
+    if (!window.Cropper) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js';
+      script.onload = carregarCropper;
+      document.head.appendChild(script);
+    } else {
+      carregarCropper();
+    }
+
+    document.getElementById('btn-cancel-auth-crop').onclick = () => {
+      if (cropper) cropper.destroy();
+      modalCrop.remove();
+    };
+
+    document.getElementById('btn-apply-auth-crop').onclick = () => {
+      if (cropper) {
+        const canvas = cropper.getCroppedCanvas({ width: 300, height: 300 });
+        avatarBase64Selecionado = canvas.toDataURL('image/webp', 0.88);
+        atualizarPreviewAvatarDOM(avatarBase64Selecionado);
+        cropper.destroy();
+      }
+      modalCrop.remove();
+    };
+  };
+
+  reader.readAsDataURL(file);
+}
+
+function atualizarPreviewAvatarDOM(src) {
+  const preview = document.getElementById('criar-avatar-preview');
+  if (preview) preview.src = src;
+}
+
+// GERENCIAMENTO DE CONTAS SALVAS
 function carregarContasSalvas() {
   const container = document.getElementById('contas-salvas-container');
   if (!container) return;
@@ -178,17 +304,17 @@ function carregarContasSalvas() {
 
     container.classList.remove('hidden');
     let html = `
-      <div class="contas-salvas-title"><i class="fa-solid fa-users"></i> Contas Salvas</div>
+      <div class="contas-salvas-title"><i class="fa-solid fa-users"></i> Alternar Conta Instantaneamente</div>
       <div class="contas-salvas-list">
     `;
 
     contas.forEach(c => {
       const avatar = c.avatar_url || `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(c.username)}`;
       html += `
-        <div class="conta-chip" onclick="selecionarContaSalva('${sanitizarHtmlAuth(c.username)}')">
+        <div class="conta-chip" onclick="trocarContaDiretoLocal('${sanitizarHtmlAuth(c.username)}')" title="Clique para entrar como @${sanitizarHtmlAuth(c.username)}">
           <img src="${avatar}" alt="${c.username}" class="conta-chip-avatar" onerror="this.src='https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(c.username)}'">
           <span class="conta-chip-name">@${sanitizarHtmlAuth(c.username)}</span>
-          <i class="fa-solid fa-xmark remove-chip-btn" onclick="event.stopPropagation(); removerContaSalva('${sanitizarHtmlAuth(c.username)}')" title="Remover conta"></i>
+          <i class="fa-solid fa-xmark remove-chip-btn" onclick="event.stopPropagation(); removerContaSalva('${sanitizarHtmlAuth(c.username)}')" title="Remover da lista"></i>
         </div>
       `;
     });
@@ -200,11 +326,20 @@ function carregarContasSalvas() {
   }
 }
 
-function selecionarContaSalva(username) {
-  const inputUsername = document.getElementById('login-username');
-  const inputSenha = document.getElementById('login-senha');
-  if (inputUsername) inputUsername.value = username;
-  if (inputSenha) inputSenha.focus();
+function trocarContaDiretoLocal(username) {
+  try {
+    const contas = JSON.parse(localStorage.getItem('contas_salvas_lista')) || [];
+    const contaAlvo = contas.find(c => c.username === username);
+
+    if (contaAlvo) {
+      exibirMensagem(`Entrando como @${username}...`, 'success');
+      setTimeout(() => {
+        concluirAutenticacaoESessao(contaAlvo);
+      }, 300);
+    }
+  } catch (err) {
+    console.error("Erro ao alternar conta:", err);
+  }
 }
 
 function salvarContaLocal(usuario) {
@@ -213,13 +348,14 @@ function salvarContaLocal(usuario) {
     contas = contas.filter(c => c.username !== usuario.username);
     contas.unshift({
       username: usuario.username,
+      display_name: usuario.display_name || usuario.nome || usuario.username,
       avatar_url: usuario.avatar_url,
       id: usuario.id
     });
     if (contas.length > 5) contas.pop();
     localStorage.setItem('contas_salvas_lista', JSON.stringify(contas));
   } catch (err) {
-    console.error("Erro ao salvar conta no localStorage:", err);
+    console.error("Erro ao salvar conta:", err);
   }
 }
 
@@ -234,13 +370,13 @@ function removerContaSalva(username) {
   }
 }
 
-// ==========================================================================
-// FLUXO DE CRIAÇÃO EM ETAPAS (WIZARD)
-// ==========================================================================
-
+// WIZARD EM ETAPAS
 function resetarWizardCriacao() {
   etapaCriacaoAtual = 1;
   usernameEstaLivre = false;
+  avatarBase64Selecionado = null;
+  turnstileToken = null;
+
   const inputs = document.querySelectorAll('#form-criar input');
   inputs.forEach(i => {
     if (i.type === 'checkbox') i.checked = false;
@@ -250,9 +386,7 @@ function resetarWizardCriacao() {
   const feedback = document.getElementById('username-check-feedback');
   if (feedback) feedback.innerHTML = '';
 
-  const avatarPreview = document.getElementById('criar-avatar-preview');
-  if (avatarPreview) avatarPreview.src = 'https://ui-avatars.com/api/?background=ff2d55&color=fff&name=PZ';
-
+  atualizarPreviewAvatarDOM('https://ui-avatars.com/api/?background=ff2d55&color=fff&name=Sphere');
   atualizarExibicaoEtapas();
 }
 
@@ -262,33 +396,43 @@ function avancarEtapa() {
   if (etapaCriacaoAtual === 1) {
     const displayName = document.getElementById('criar-display-name')?.value.trim();
     const username = document.getElementById('criar-username')?.value.trim();
+    const email = document.getElementById('criar-email')?.value.trim();
     const senha = document.getElementById('criar-senha')?.value;
     const confirmar = document.getElementById('criar-confirmar')?.value;
 
     if (!displayName || !username || !senha) {
-      exibirMensagem("Preencha todos os campos obrigatórios para prosseguir.");
+      exibirMensagem("Preencha todos os campos obrigatórios.");
       return;
     }
+
+    if (email && (!email.includes('@') || !email.includes('.'))) {
+      exibirMensagem("Por favor, informe um endereço de e-mail válido.");
+      return;
+    }
+
     if (username.length < 3) {
-      exibirMensagem("O @username deve possuir no mínimo 3 caracteres.");
+      exibirMensagem("O @username precisa ter no mínimo 3 caracteres.");
       return;
     }
+
     if (!usernameEstaLivre) {
       exibirMensagem("Escolha um @username válido e disponível.");
       return;
     }
+
     if (senha.length < 4) {
-      exibirMensagem("A senha precisa ter no mínimo 4 caracteres.");
+      exibirMensagem("A senha deve ter no mínimo 4 caracteres.");
       return;
     }
+
     if (senha !== confirmar) {
-      exibirMensagem("As senhas informadas não coincidem.");
+      exibirMensagem("As senhas não coincidem.");
       return;
     }
   } else if (etapaCriacaoAtual === 2) {
     const nascimento = document.getElementById('criar-nascimento')?.value;
     if (!nascimento) {
-      exibirMensagem("Por favor, preencha sua data de nascimento.");
+      exibirMensagem("Informe sua data de nascimento para prosseguir.");
       return;
     }
   }
@@ -305,7 +449,7 @@ function voltarEtapa() {
     etapaCriacaoAtual--;
     atualizarExibicaoEtapas();
   } else {
-    mostrarTela('login');
+    mostrarTela('inicial');
   }
 }
 
@@ -334,65 +478,45 @@ function atualizarExibicaoEtapas() {
   }
 }
 
-// Suporte a Upload do Avatar pela Galeria / Arquivo Local
-function processarAvatarArquivoAuth(input) {
-  if (!input.files || !input.files[0]) return;
-  const file = input.files[0];
-
-  if (file.size > 8 * 1024 * 1024) {
-    exibirMensagem("A foto escolhida deve ser menor que 8MB.");
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const base64 = e.target.result;
-    const avatarPreview = document.getElementById('criar-avatar-preview');
-    const avatarInput = document.getElementById('avatar-url');
-
-    if (avatarPreview) avatarPreview.src = base64;
-    if (avatarInput) avatarInput.value = base64;
-  };
-  reader.readAsDataURL(file);
-}
-
-// Atualizar Preview quando digitar URL de Avatar
-function atualizarAvatarUrlPreview(input) {
-  const url = input.value.trim();
-  const avatarPreview = document.getElementById('criar-avatar-preview');
-  if (avatarPreview && url !== '') {
-    avatarPreview.src = url;
+function abrirVerificacaoTermos(tipo) {
+  if (tipo === 'termos' && typeof window.abrirTermosDeUso === 'function') {
+    window.abrirTermosDeUso();
+  } else if (tipo === 'privacidade' && typeof window.abrirPoliticaPrivacidade === 'function') {
+    window.abrirPoliticaPrivacidade();
+  } else if (tipo === 'seguranca' && typeof window.abrirDiretrizesSeguranca === 'function') {
+    window.abrirDiretrizesSeguranca();
   }
 }
 
-// Criar Conta e Entrar Direto no Sistema
+// REGISTRO DE CONTA
 async function criarConta() {
   limparMensagens();
+  if (!verificarRateLimit()) return;
+
   const btnCriar = document.getElementById('btn-step-criar');
   const termosCheck = document.getElementById('aceitar-termos');
 
   if (termosCheck && !termosCheck.checked) {
-    exibirMensagem("Você deve concordar com os Termos e Condições para continuar.");
+    exibirMensagem("Você deve aceitar os Termos, Privacidade e Segurança para criar uma conta.");
     return;
   }
 
   const displayName = document.getElementById('criar-display-name')?.value.trim();
   const username = document.getElementById('criar-username')?.value.trim().toLowerCase();
+  const email = document.getElementById('criar-email')?.value.trim();
   const senha = document.getElementById('criar-senha')?.value;
   const dataNascimento = document.getElementById('criar-nascimento')?.value;
-  const avatar = document.getElementById('avatar-url')?.value.trim();
 
   alternarEstadoBotao(btnCriar, true);
 
   try {
-    // Checagem final de segurança no banco de dados
     const { data: usuarioExistente } = await supabaseClient
       .from('usuarios')
       .select('username')
       .eq('username', username);
 
     if (usuarioExistente && usuarioExistente.length > 0) {
-      exibirMensagem("Este @username já foi cadastrado por outro usuário.");
+      exibirMensagem("Este @username já está em uso.");
       etapaCriacaoAtual = 1;
       atualizarExibicaoEtapas();
       return;
@@ -401,9 +525,10 @@ async function criarConta() {
     const novoUsuario = { 
       display_name: displayName,
       username: username, 
+      email: email || null,
       senha: senha,
       data_nascimento: dataNascimento,
-      avatar_url: avatar || null,
+      avatar_url: avatarBase64Selecionado || null,
       status: 'online',
       created_at: new Date().toISOString()
     };
@@ -417,12 +542,15 @@ async function criarConta() {
     if (error) {
       exibirMensagem("Erro ao registrar conta: " + error.message);
     } else if (data) {
-      exibirMensagem("Conta criada com sucesso! Redirecionando...", "success");
+      localStorage.setItem('sphere_termos_aceitos', 'true');
+      localStorage.setItem('sphere_privacidade_aceita', 'true');
+      localStorage.setItem('sphere_seguranca_aceita', 'true');
 
-      // LOGIN DIRETO - Sem passar pela tela de login
+      exibirMensagem("Conta criada com sucesso! Entrando...", "success");
+
       setTimeout(() => {
         concluirAutenticacaoESessao(data);
-      }, 1000);
+      }, 800);
     }
   } catch (err) {
     exibirMensagem("Erro de comunicação com o servidor.");
@@ -431,59 +559,72 @@ async function criarConta() {
   }
 }
 
-// ==========================================================================
-// LOGIN & LOGOUT
-// ==========================================================================
-
+// LOGIN
 async function entrar() {
   limparMensagens();
+  if (!verificarRateLimit()) return;
+
   const btnEntrar = document.getElementById('btn-entrar');
-  const usernameInput = document.getElementById('login-username');
-  const senhaInput = document.getElementById('login-senha');
+  const loginInput = document.getElementById('login-username')?.value.trim().toLowerCase();
+  const senhaInput = document.getElementById('login-senha')?.value;
 
-  const username = usernameInput ? usernameInput.value.trim().toLowerCase() : '';
-  const senha = senhaInput ? senhaInput.value : '';
-
-  if (!username || !senha) {
-    exibirMensagem("Por favor, informe seu usuário e senha.");
+  if (!loginInput || !senhaInput) {
+    exibirMensagem("Informe seu e-mail ou @username e sua senha.");
     return;
   }
 
   alternarEstadoBotao(btnEntrar, true);
 
   try {
-    const { data, error } = await supabaseClient
-      .from('usuarios')
-      .select('*')
-      .eq('username', username)
-      .eq('senha', senha)
-      .maybeSingle();
+    const ehEmail = loginInput.includes('@');
+    let query = supabaseClient.from('usuarios').select('*').eq('senha', senhaInput);
+
+    if (ehEmail) {
+      query = query.eq('email', loginInput);
+    } else {
+      query = query.eq('username', loginInput);
+    }
+
+    const { data, error } = await query.maybeSingle();
 
     if (error || !data) {
-      exibirMensagem("Usuário ou senha incorretos.");
+      exibirMensagem("Credenciais incorretas. Verifique seu login e senha.");
     } else if (data.is_banned) {
-      exibirMensagem("Sua conta está suspensa por violar as regras da comunidade.");
+      exibirMensagem("Esta conta está suspensa por violar as diretrizes da comunidade.");
     } else {
       concluirAutenticacaoESessao(data);
     }
   } catch (err) {
-    exibirMensagem("Falha ao tentar conectar ao servidor.");
+    exibirMensagem("Falha de conexão com o servidor.");
   } finally {
     alternarEstadoBotao(btnEntrar, false);
   }
 }
 
+// Login via Google OAuth
+async function entrarComGoogle() {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + window.location.pathname
+      }
+    });
+    if (error) exibirMensagem("Erro ao conectar com Google: " + error.message);
+  } catch (err) {
+    exibirMensagem("Falha ao iniciar autenticação com o Google.");
+  }
+}
+
 function concluirAutenticacaoESessao(usuario) {
-  // Salva a sessão ativa e histórico de contas
   localStorage.setItem('usuario_logado', JSON.stringify(usuario));
   salvarContaLocal(usuario);
 
-  // Atualiza status local para Online
   if (typeof window.atualizarStatusLocal === 'function') {
     window.atualizarStatusLocal('online');
   }
 
-  // Esconde o modal/card de autenticação
   const authCard = document.getElementById('auth-card');
   if (authCard) authCard.classList.add('hidden');
 
@@ -491,7 +632,6 @@ function concluirAutenticacaoESessao(usuario) {
     atualizarComponentesVisiveis();
   }
 
-  // Renderiza o novo HomeCard
   if (typeof window.renderHomeCard === 'function') {
     window.renderHomeCard(usuario);
   }
@@ -525,10 +665,10 @@ function sair() {
   const authCard = document.getElementById('auth-card');
   if (authCard) authCard.classList.remove('hidden');
 
-  mostrarTela('login');
+  mostrarTela('inicial');
 }
 
-// Inicialização de Escutadores
+// Inicialização DOM
 document.addEventListener('DOMContentLoaded', () => {
   carregarContasSalvas();
 
@@ -562,16 +702,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Exportações Globais
+// Exportações
 window.mostrarTela = mostrarTela;
 window.validarUsername = validarUsername;
 window.alternarVisibilidadeSenha = alternarVisibilidadeSenha;
 window.avancarEtapa = avancarEtapa;
 window.voltarEtapa = voltarEtapa;
-window.processarAvatarArquivoAuth = processarAvatarArquivoAuth;
-window.atualizarAvatarUrlPreview = atualizarAvatarUrlPreview;
+window.abrirSeletorGaleriaAvatar = abrirSeletorGaleriaAvatar;
+window.processarAvatarGaleriaAuth = processarAvatarGaleriaAuth;
+window.abrirVerificacaoTermos = abrirVerificacaoTermos;
+window.trocarContaDiretoLocal = trocarContaDiretoLocal;
 window.criarConta = criarConta;
 window.entrar = entrar;
+window.entrarComGoogle = entrarComGoogle;
 window.sair = sair;
-window.selecionarContaSalva = selecionarContaSalva;
 window.removerContaSalva = removerContaSalva;

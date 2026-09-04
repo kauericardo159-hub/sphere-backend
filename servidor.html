@@ -3,12 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel do Criador & Servidor - Project Z</title>
+    <title>Painel do Criador & Servidor - Project Z / Sphere</title>
     
-    <!-- Dependências de Scripts e Fontes -->
+    <!-- Impede Cache do Navegador -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <!-- Dependências -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
         :root {
@@ -16,7 +21,7 @@
             --primary-hover: #e02447;
             --primary-glow: rgba(255, 45, 85, 0.35);
             --bg-dark: #080409;
-            --card-bg: rgba(20, 11, 24, 0.92);
+            --card-bg: rgba(20, 11, 24, 0.94);
             --card-hover: rgba(255, 45, 85, 0.08);
             --text-color: #ffffff;
             --text-muted: #b3a5b8;
@@ -27,6 +32,7 @@
             --offline-red: #ff3838;
             --gold-creator: #ffd700;
             --blue-info: #00d2ff;
+            --purple-bot: #a55eea;
             --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
         }
 
@@ -54,13 +60,12 @@
 
         .container { max-width: 1320px; margin: 0 auto; }
 
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
         ::-webkit-scrollbar-thumb { background: rgba(255, 45, 85, 0.4); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
 
-        /* Tela de Acesso Negado (Apenas Criador) */
+        /* Acesso Negado */
         #access-denied-screen {
             display: flex;
             flex-direction: column;
@@ -104,7 +109,7 @@
         }
         .btn-back-home:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 4px 15px var(--primary-glow); }
 
-        /* Cabeçalho Principal */
+        /* Aplicação Principal */
         #server-app-content { display: none; animation: fadeIn 0.3s ease-out; }
 
         @keyframes fadeIn {
@@ -133,7 +138,7 @@
 
         .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-        /* Barra de Ações de Controle e Desligamento */
+        /* Painel de Controle */
         .server-control-panel {
             background: var(--card-bg);
             border: 1px solid var(--border-accent);
@@ -147,11 +152,7 @@
             gap: 16px;
         }
 
-        .server-status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+        .server-status-indicator { display: flex; align-items: center; gap: 12px; }
 
         .status-badge-pill {
             padding: 6px 14px;
@@ -167,11 +168,7 @@
         .status-badge-pill.active { background: rgba(46, 213, 115, 0.15); color: var(--online-green); border: 1px solid rgba(46, 213, 115, 0.4); }
         .status-badge-pill.disabled { background: rgba(255, 56, 56, 0.15); color: var(--offline-red); border: 1px solid rgba(255, 56, 56, 0.4); }
 
-        .server-cmds-group {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
+        .server-cmds-group { display: flex; gap: 10px; flex-wrap: wrap; }
 
         .btn-cmd {
             background: rgba(255, 255, 255, 0.06);
@@ -199,24 +196,28 @@
             color: var(--offline-red);
             border-color: rgba(255, 56, 56, 0.4);
         }
-
-        .btn-cmd.toggle-off:hover {
-            background: var(--offline-red);
-            color: #fff;
-        }
+        .btn-cmd.toggle-off:hover { background: var(--offline-red); color: #fff; }
 
         .btn-cmd.toggle-on {
             background: rgba(46, 213, 115, 0.18);
             color: var(--online-green);
             border-color: rgba(46, 213, 115, 0.4);
         }
+        .btn-cmd.toggle-on:hover { background: var(--online-green); color: #000; }
 
-        .btn-cmd.toggle-on:hover {
-            background: var(--online-green);
-            color: #000;
+        .btn-cmd.bot-active {
+            background: rgba(165, 94, 234, 0.2);
+            color: var(--purple-bot);
+            border-color: rgba(165, 94, 234, 0.4);
         }
 
-        /* Grid de Status */
+        .btn-cmd.bot-inactive {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            border-color: var(--border-light);
+        }
+
+        /* Grid de Métricas */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -254,8 +255,8 @@
 
         .stat-info .title { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.8px; }
         .stat-info .value { font-size: 1.4rem; font-weight: 800; margin-top: 4px; color: #fff; }
-        
-        /* Tabela de Usuários */
+
+        /* Tabela */
         .section-header { 
             display: flex; 
             justify-content: space-between; 
@@ -387,6 +388,22 @@
         }
         .btn-pwd-reset:hover { background: var(--blue-info); color: #000; }
 
+        .btn-avatar-reset {
+            background: rgba(255, 193, 7, 0.15);
+            color: #ffd043;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            padding: 7px 11px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .btn-avatar-reset:hover { background: #ffd043; color: #000; }
+
         .btn-delete {
             background: rgba(255, 56, 56, 0.15);
             color: var(--offline-red);
@@ -403,7 +420,7 @@
         }
         .btn-delete:hover { background: var(--offline-red); color: #fff; }
 
-        /* Módulo Avançado de Audit Logs */
+        /* Console Logs */
         .logs-card {
             background: #100814;
             border: 1px solid var(--border-accent);
@@ -437,7 +454,7 @@
             font-family: monospace;
             font-size: 0.82rem;
             color: var(--text-muted);
-            max-height: 220px;
+            max-height: 240px;
             overflow-y: auto;
             line-height: 1.6;
         }
@@ -447,7 +464,7 @@
         .log-entry.error { color: var(--offline-red); }
         .log-entry.warning { color: var(--gold-creator); }
 
-        /* Toast Notice */
+        /* Toast */
         #server-toast {
             position: fixed;
             bottom: 24px;
@@ -484,12 +501,12 @@
 
     <div class="container">
 
-        <!-- Tela de Acesso Negado (Apenas Criador) -->
+        <!-- Tela de Acesso Negado -->
         <div id="access-denied-screen" style="display: none;">
             <div class="lock-card">
                 <i class="fa-solid fa-crown"></i>
                 <h2>Acesso Exclusivo do Criador</h2>
-                <p>Apenas o Criador Oficial do projeto possui permissões para gerenciar a hospedagem e desligar o servidor.</p>
+                <p>Apenas o Criador Oficial do projeto possui permissões para gerenciar a hospedagem e o servidor.</p>
                 <a href="index.html" class="btn-back-home"><i class="fa-solid fa-house"></i> Voltar ao Início</a>
             </div>
         </div>
@@ -501,7 +518,7 @@
                     <i class="fa-solid fa-crown"></i>
                     <div>
                         <h1>PAINEL DO SERVIDOR & DEV</h1>
-                        <p>Controle de Hospedagem, Status de Manutenção e Gestão de Banco</p>
+                        <p>Controle de Hospedagem, Status de Manutenção e Gestão do Banco de Dados</p>
                     </div>
                 </div>
                 <div class="header-actions">
@@ -510,10 +527,10 @@
                 </div>
             </header>
 
-            <!-- Painel de Controle e Estado do Servidor -->
+            <!-- Painel de Controle de Manutenção e Estado -->
             <div class="server-control-panel">
                 <div class="server-status-indicator">
-                    <span style="font-weight: 800; font-size: 0.9rem; color: var(--text-muted);">Estado Atual:</span>
+                    <span style="font-weight: 800; font-size: 0.9rem; color: var(--text-muted);">Estado do Servidor:</span>
                     <div id="status-pill-indicator" class="status-badge-pill active">
                         <i class="fa-solid fa-circle" style="font-size: 0.65rem;"></i>
                         <span id="status-pill-text">Servidor Ativo</span>
@@ -521,19 +538,25 @@
                 </div>
 
                 <div class="server-cmds-group">
-                    <button id="btn-toggle-server" class="btn-cmd toggle-off" onclick="alternarEstadoServidor()">
-                        <i class="fa-solid fa-power-off"></i> Desligar Servidor
+                    <button id="btn-toggle-server" class="btn-cmd toggle-off" onclick="alternarEstadoManutencaoServidor()">
+                        <i class="fa-solid fa-power-off"></i> Alternar Manutenção
                     </button>
+
+                    <button id="btn-toggle-keepalive" class="btn-cmd bot-inactive" onclick="alternarRenderKeepAlive()">
+                        <i class="fa-solid fa-robot"></i> Render 24/7 (Inativo)
+                    </button>
+
                     <button class="btn-cmd" onclick="testarPingConexao()">
-                        <i class="fa-solid fa-network-wired"></i> Testar Ping API
+                        <i class="fa-solid fa-network-wired"></i> Testar Ping
                     </button>
+                    
                     <button class="btn-cmd" onclick="reiniciarServidorRender()">
                         <i class="fa-solid fa-rotate"></i> Restart Render
                     </button>
                 </div>
             </div>
 
-            <!-- Cards de Métricas -->
+            <!-- Métricas -->
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fa-solid fa-server"></i></div>
@@ -598,7 +621,7 @@
                             <tr>
                                 <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;">
                                     <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; color: var(--primary-color);"></i>
-                                    <p style="margin-top: 10px;">Carregando banco de dados...</p>
+                                    <p style="margin-top: 10px;">Carregando banco de dados ao vivo...</p>
                                 </td>
                             </tr>
                         </tbody>
@@ -606,18 +629,18 @@
                 </div>
             </div>
 
-            <!-- Console de Logs de Auditoria -->
+            <!-- Console de Logs Persistente no Supabase -->
             <div class="logs-card">
                 <div class="logs-header">
                     <div class="logs-title">
-                        <i class="fa-solid fa-terminal"></i> Histórico de Registros do Servidor
+                        <i class="fa-solid fa-terminal"></i> Registros e Logs do Servidor (Supabase Realtime)
                     </div>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn-cmd" style="padding: 6px 12px; font-size: 0.75rem;" onclick="limparLogsConsole()"><i class="fa-solid fa-trash-can"></i> Limpar Logs</button>
+                        <button class="btn-cmd" style="padding: 6px 12px; font-size: 0.75rem;" onclick="limparLogsBanco()"><i class="fa-solid fa-trash-can"></i> Limpar Registros</button>
                     </div>
                 </div>
                 <div class="logs-box" id="logs-console">
-                    <div class="log-entry">[SISTEMA] Console do Criador pronto para monitoramento.</div>
+                    <div class="log-entry">[SISTEMA] Conectando ao serviço de auditoria em tempo real...</div>
                 </div>
             </div>
 
@@ -638,13 +661,31 @@
 
         const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
         let globalUsersCache = [];
-        let servidorDesligadoModoLocal = false;
+        let manutencaoAtiva = false;
+        let keepAliveTimer = null;
+        let isKeepAliveActive = false;
+        let criadorLogado = null;
 
-        function adicionarLog(mensagem, tipo = 'info') {
+        // 1. REGISTRAR E RENDERIZAR LOGS DIRETO NO BANCO DO SUPABASE
+        async function adicionarLog(mensagem, tipo = 'info') {
+            console.log(`[LOG] ${mensagem}`);
+            if (!supabaseClient) return;
+
+            try {
+                await supabaseClient.from('servidor_logs').insert([{
+                    mensagem: mensagem,
+                    tipo: tipo,
+                    operador_username: criadorLogado ? criadorLogado.username : 'Criador'
+                }]);
+            } catch (e) {
+                renderizarLogLocalmente(mensagem, tipo, new Date().toLocaleTimeString());
+            }
+        }
+
+        function renderizarLogLocalmente(mensagem, tipo, hora) {
             const consoleBox = document.getElementById('logs-console');
             if (!consoleBox) return;
 
-            const hora = new Date().toLocaleTimeString();
             const div = document.createElement('div');
             div.className = `log-entry ${tipo}`;
             div.innerText = `[${hora}] ${mensagem}`;
@@ -653,9 +694,35 @@
             consoleBox.scrollTop = consoleBox.scrollHeight;
         }
 
-        function limparLogsConsole() {
+        async function carregarLogsDoBanco() {
+            if (!supabaseClient) return;
             const consoleBox = document.getElementById('logs-console');
-            if (consoleBox) consoleBox.innerHTML = '<div class="log-entry">[SISTEMA] Console de registros purgado.</div>';
+
+            const { data: logs, error } = await supabaseClient
+                .from('servidor_logs')
+                .select('*')
+                .order('id', { ascending: false })
+                .limit(40);
+
+            if (error || !logs) return;
+
+            consoleBox.innerHTML = '';
+            logs.reverse().forEach(log => {
+                const hora = new Date(log.created_at).toLocaleTimeString('pt-BR');
+                renderizarLogLocalmente(log.mensagem, log.tipo, hora);
+            });
+        }
+
+        async function limparLogsBanco() {
+            if (!confirm("Deseja apagar todos os registros de log do servidor no banco de dados?")) return;
+            
+            if (supabaseClient) {
+                await supabaseClient.from('servidor_logs').delete().gte('id', 0);
+            }
+            
+            const consoleBox = document.getElementById('logs-console');
+            if (consoleBox) consoleBox.innerHTML = '<div class="log-entry">[SISTEMA] Console purgado pelo Criador.</div>';
+            mostrarToast("Logs do banco de dados excluídos!");
         }
 
         function mostrarToast(mensagem, eErro = false) {
@@ -678,24 +745,62 @@
             setTimeout(() => toast.classList.remove('show'), 3500);
         }
 
-        // VERIFICAÇÃO EXCLUSIVA PARA O CRIADOR (is_creator === true)
-        function verificarAcessoExclusivoCriador() {
+        // 2. VALIDAÇÃO EXCLUSIVA DO CRIADOR NO SUPABASE
+        async function verificarAcessoExclusivoCriador() {
             try {
                 const raw = localStorage.getItem('usuario_logado') || localStorage.getItem('usuario') || localStorage.getItem('user');
                 if (!raw) { bloquearAcesso(); return false; }
 
-                const user = JSON.parse(raw);
-                const eCriador = Boolean(user.is_creator);
+                const userLocal = JSON.parse(raw);
+                if (!userLocal || !userLocal.id) { bloquearAcesso(); return false; }
 
-                if (!eCriador) { bloquearAcesso(); return false; }
+                const { data: userBD, error } = await supabaseClient
+                    .from('usuarios')
+                    .select('*')
+                    .eq('id', userLocal.id)
+                    .single();
 
+                if (error || !userBD || !Boolean(userBD.is_creator || userBD.is_criador)) {
+                    bloquearAcesso();
+                    return false;
+                }
+
+                criadorLogado = userBD;
                 document.getElementById('server-app-content').style.display = 'block';
-                verificarEstadoModoManutencao();
+                
+                await sincronizarEstadoBotKeepAliveBD();
+                sincronizarEstadoManutencaoBD();
+                carregarLogsDoBanco();
+                ativarEscutaRealtimeTotal();
                 return true;
             } catch (e) {
                 bloquearAcesso();
                 return false;
             }
+        }
+
+        // 3. LISTENERS EM TEMPO REAL (REALTIME)
+        function ativarEscutaRealtimeTotal() {
+            if (!supabaseClient) return;
+
+            supabaseClient
+                .channel('realtime-servidor-painel')
+                // Escuta novos logs
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'servidor_logs' }, payload => {
+                    const log = payload.new;
+                    const hora = new Date(log.created_at).toLocaleTimeString('pt-BR');
+                    renderizarLogLocalmente(log.mensagem, log.tipo, hora);
+                })
+                // Escuta alterações na manutenção/bot
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'configuracoes_sistema' }, () => {
+                    sincronizarEstadoManutencaoBD();
+                    sincronizarEstadoBotKeepAliveBD();
+                })
+                // Escuta atualizações da tabela de usuários ao vivo
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'usuarios' }, () => {
+                    fetchUsers();
+                })
+                .subscribe();
         }
 
         function bloquearAcesso() {
@@ -711,9 +816,25 @@
             return `${h}h ${m}m ${s}s`;
         }
 
-        function verificarEstadoModoManutencao() {
-            servidorDesligadoModoLocal = localStorage.getItem('app_servidor_desligado') === 'true';
-            atualizarInterfaceEstadoServidor(servidorDesligadoModoLocal);
+        // 4. SINCRONIZAÇÃO E CONTROLE DA MANUTENÇÃO NO SUPABASE
+        async function sincronizarEstadoManutencaoBD() {
+            try {
+                const { data } = await supabaseClient
+                    .from('configuracoes_sistema')
+                    .select('valor')
+                    .eq('chave', 'modo_manutencao')
+                    .single();
+
+                if (data) {
+                    manutencaoAtiva = (data.valor === 'true' || data.valor === true);
+                } else {
+                    manutencaoAtiva = localStorage.getItem('app_servidor_desligado') === 'true';
+                }
+                atualizarInterfaceEstadoServidor(manutencaoAtiva);
+            } catch (err) {
+                manutencaoAtiva = localStorage.getItem('app_servidor_desligado') === 'true';
+                atualizarInterfaceEstadoServidor(manutencaoAtiva);
+            }
         }
 
         function atualizarInterfaceEstadoServidor(desligado) {
@@ -723,36 +844,130 @@
 
             if (desligado) {
                 pillIndicator.className = "status-badge-pill disabled";
-                pillText.innerText = "Servidor Desligado (Manutenção)";
+                pillText.innerText = "Servidor em Manutenção";
                 btnToggle.className = "btn-cmd toggle-on";
                 btnToggle.innerHTML = `<i class="fa-solid fa-play"></i> Ligar Servidor`;
             } else {
                 pillIndicator.className = "status-badge-pill active";
                 pillText.innerText = "Servidor Ativo (Online)";
                 btnToggle.className = "btn-cmd toggle-off";
-                btnToggle.innerHTML = `<i class="fa-solid fa-power-off"></i> Desligar Servidor`;
+                btnToggle.innerHTML = `<i class="fa-solid fa-power-off"></i> Desligar / Manutenção`;
             }
         }
 
-        async function alternarEstadoServidor() {
-            servidorDesligadoModoLocal = !servidorDesligadoModoLocal;
-            localStorage.setItem('app_servidor_desligado', servidorDesligadoModoLocal ? 'true' : 'false');
+        async function alternarEstadoManutencaoServidor() {
+            manutencaoAtiva = !manutencaoAtiva;
+            localStorage.setItem('app_servidor_desligado', manutencaoAtiva ? 'true' : 'false');
+            
+            try {
+                await supabaseClient
+                    .from('configuracoes_sistema')
+                    .upsert({ chave: 'modo_manutencao', valor: manutencaoAtiva ? 'true' : 'false' });
+            } catch (e) {}
 
-            atualizarInterfaceEstadoServidor(servidorDesligadoModoLocal);
+            atualizarInterfaceEstadoServidor(manutencaoAtiva);
 
-            if (servidorDesligadoModoLocal) {
-                mostrarToast('Servidor colocado em modo Offline / Manutenção.', true);
-                adicionarLog('SERVIDOR DESLIGADO PELO CRIADOR (Manutenção Ativa).', 'error');
+            if (manutencaoAtiva) {
+                mostrarToast('Servidor colocado em Modo de Manutenção!', true);
+                adicionarLog('⚠️ SERVIDOR COLOCADO EM MANUTENÇÃO PELO CRIADOR.', 'error');
             } else {
                 mostrarToast('Servidor religado com sucesso!');
-                adicionarLog('SERVIDOR RELIGADO PELO CRIADOR.', 'success');
+                adicionarLog('✅ SERVIDOR RELIGADO E ONLINE PARA TODOS OS USUÁRIOS.', 'success');
             }
         }
 
+        // 5. GERENCIAMENTO PERSISTENTE DO BOT KEEP-ALIVE 24/7
+        async function sincronizarEstadoBotKeepAliveBD() {
+            try {
+                const { data } = await supabaseClient
+                    .from('configuracoes_sistema')
+                    .select('valor')
+                    .eq('chave', 'render_bot_active')
+                    .single();
+
+                if (data) {
+                    isKeepAliveActive = (data.valor === 'true' || data.valor === true);
+                } else {
+                    const localBotState = localStorage.getItem('render_bot_active');
+                    isKeepAliveActive = localBotState === null ? true : (localBotState === 'true');
+                }
+            } catch (err) {
+                const localBotState = localStorage.getItem('render_bot_active');
+                isKeepAliveActive = localBotState === null ? true : (localBotState === 'true');
+            }
+
+            atualizarInterfaceBotKeepAlive(isKeepAliveActive);
+
+            if (isKeepAliveActive) {
+                iniciarExecucaoLoopBot();
+            } else {
+                pausarExecucaoLoopBot();
+            }
+        }
+
+        function atualizarInterfaceBotKeepAlive(ativo) {
+            const btn = document.getElementById('btn-toggle-keepalive');
+            if (ativo) {
+                btn.className = "btn-cmd bot-active";
+                btn.innerHTML = `<i class="fa-solid fa-robot"></i> Render 24/7 (Ativo)`;
+            } else {
+                btn.className = "btn-cmd bot-inactive";
+                btn.innerHTML = `<i class="fa-solid fa-robot"></i> Render 24/7 (Inativo)`;
+            }
+        }
+
+        function iniciarExecucaoLoopBot() {
+            if (keepAliveTimer) clearInterval(keepAliveTimer);
+            
+            keepAliveTimer = setInterval(async () => {
+                if (!isKeepAliveActive) return;
+                try {
+                    const res = await fetch(`${API_URL}/status`);
+                    if (res.ok) {
+                        adicionarLog("🤖 [Render 24/7] Ping Keep-Alive enviado com sucesso.", "success");
+                    }
+                } catch (e) {
+                    adicionarLog("⚠️ [Render 24/7] Tentativa de ping falhou. Servidor acordando...", "warning");
+                }
+            }, 240000); // 4 Minutos
+        }
+
+        function pausarExecucaoLoopBot() {
+            if (keepAliveTimer) {
+                clearInterval(keepAliveTimer);
+                keepAliveTimer = null;
+            }
+        }
+
+        async function alternarRenderKeepAlive() {
+            isKeepAliveActive = !isKeepAliveActive;
+            
+            // Grava persistentemente no LocalStorage e no Supabase
+            localStorage.setItem('render_bot_active', isKeepAliveActive ? 'true' : 'false');
+            try {
+                await supabaseClient
+                    .from('configuracoes_sistema')
+                    .upsert({ chave: 'render_bot_active', valor: isKeepAliveActive ? 'true' : 'false' });
+            } catch (e) {}
+
+            atualizarInterfaceBotKeepAlive(isKeepAliveActive);
+
+            if (isKeepAliveActive) {
+                iniciarExecucaoLoopBot();
+                mostrarToast("Bot Keep-Alive ativado!");
+                adicionarLog("🤖 Bot Keep-Alive 24/7 foi ATIVADO pelo Criador.", "info");
+            } else {
+                pausarExecucaoLoopBot();
+                mostrarToast("Bot Keep-Alive pausado e desativado.", true);
+                adicionarLog("⏸️ Bot Keep-Alive 24/7 foi PERMANENTEMENTE DESATIVADO pelo Criador.", "warning");
+            }
+        }
+
+        // 6. MÉTRICAS E TESTES
         async function fetchServerStats() {
-            if (servidorDesligadoModoLocal) {
-                document.getElementById('server-status-text').innerText = "Desligado";
-                document.getElementById('server-uptime').innerText = "Manutenção";
+            if (manutencaoAtiva) {
+                document.getElementById('server-status-text').innerText = "Manutenção";
+                document.getElementById('server-uptime').innerText = "Pausado";
                 document.getElementById('server-ping').innerText = "N/A";
                 return;
             }
@@ -767,15 +982,14 @@
                 document.getElementById('server-uptime').innerText = formatUptime(data.uptime);
                 document.getElementById('server-ping').innerText = `${ping} ms`;
             } catch (err) {
-                document.getElementById('server-status-text').innerText = "Offline";
-                document.getElementById('server-uptime').innerText = "N/A";
+                document.getElementById('server-status-text').innerText = "Offline/Repouso";
+                document.getElementById('server-uptime').innerText = "Inativo";
                 document.getElementById('server-ping').innerText = "N/A";
-                adicionarLog("API Render indisponível ou em estado de repouso.", "warning");
             }
         }
 
         async function testarPingConexao() {
-            adicionarLog("Medindo latência de resposta da API...");
+            adicionarLog("Iniciando medição de latência da API backend no Render...", "info");
             await fetchServerStats();
             mostrarToast("Medição de latência concluída!");
         }
@@ -783,18 +997,17 @@
         async function reiniciarServidorRender() {
             if (!confirm("Deseja enviar uma solicitação de restart para o serviço no Render?")) return;
 
-            adicionarLog("Comando de reinício enviado ao Render...", "warning");
+            adicionarLog("Enviando sinal de restart ao serviço no Render...", "warning");
             try {
                 await fetch(`${API_URL}/restart`, { method: 'POST' });
-                mostrarToast("Solicitação de reinício concluída!");
+                mostrarToast("Comando de reinício enviado!");
             } catch (e) {
-                mostrarToast("Comando enviado. A API subirá novamente em instantes.");
+                mostrarToast("Comando enviado ao servidor. Aguarde a reinicialização.");
             }
         }
 
+        // 7. GESTÃO DE USUÁRIOS
         async function fetchUsers() {
-            if (!verificarAcessoExclusivoCriador()) return;
-
             const refreshIcon = document.getElementById('refresh-icon');
             if (refreshIcon) refreshIcon.classList.add('fa-spin');
 
@@ -807,15 +1020,13 @@
 
             if (error || !usuarios) {
                 document.getElementById('users-table-body').innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--offline-red); padding: 30px;">Erro ao ler tabela de usuários.</td></tr>`;
-                mostrarToast("Erro de leitura do banco de dados", true);
-                adicionarLog("Erro Supabase: " + (error ? error.message : 'Falha de leitura'), "error");
+                mostrarToast("Erro de leitura no Supabase", true);
                 return;
             }
 
             globalUsersCache = usuarios;
             document.getElementById('total-users').innerText = usuarios.length;
             renderUsers(usuarios);
-            adicionarLog(`Banco sincronizado: ${usuarios.length} contas ativas.`, "success");
         }
 
         function renderUsers(users) {
@@ -832,7 +1043,7 @@
                 const nameDisplay = user.display_name || usernameDisplay;
                 const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(usernameDisplay)}`;
                 const avatarSrc = (user.avatar_url && user.avatar_url.trim() !== '') ? user.avatar_url : defaultAvatar;
-                const eCriador = Boolean(user.is_creator);
+                const eCriador = Boolean(user.is_creator || user.is_criador);
 
                 tbody.innerHTML += `
                     <tr>
@@ -860,7 +1071,10 @@
                                 <button class="btn-pwd-reset" onclick="redefinirSenhaDireta(${user.id}, '${usernameDisplay}')" title="Redefinir Senha">
                                     <i class="fa-solid fa-key"></i> Senha
                                 </button>
-                                <button class="btn-delete" ${eCriador ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onclick="deleteUser(${user.id}, '${usernameDisplay}')">
+                                <button class="btn-avatar-reset" ${eCriador ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onclick="resetarFotoPerfil(${user.id}, '${usernameDisplay}')" title="Resetar Foto de Perfil">
+                                    <i class="fa-solid fa-image"></i> Foto
+                                </button>
+                                <button class="btn-delete" ${eCriador ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onclick="deleteUser(${user.id}, '${usernameDisplay}')" title="Excluir Conta">
                                     <i class="fa-solid fa-trash"></i> Excluir
                                 </button>
                             </div>
@@ -904,37 +1118,50 @@
 
             if (error) {
                 mostrarToast('Erro ao redefinir senha: ' + error.message, true);
-                adicionarLog(`Erro ao redefinir senha de @${username}`, "error");
             } else {
                 mostrarToast(`Senha de @${username} alterada com sucesso!`);
-                adicionarLog(`Senha da conta @${username} atualizada no banco.`, "success");
-                fetchUsers();
+                adicionarLog(`🔑 Senha da conta @${username} alterada pelo Criador.`, "success");
+            }
+        }
+
+        async function resetarFotoPerfil(id, username) {
+            if (!confirm(`Redefinir a foto de perfil do usuário @${username} para o padrão?`)) return;
+
+            const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(username)}`;
+
+            const { error } = await supabaseClient
+                .from('usuarios')
+                .update({ avatar_url: defaultAvatar, moldura_url: '' })
+                .eq('id', id);
+
+            if (error) {
+                mostrarToast('Erro ao resetar avatar: ' + error.message, true);
+            } else {
+                mostrarToast(`Foto de perfil de @${username} resetada!`);
+                adicionarLog(`🖼️ Foto de perfil do usuário @${username} foi resetada.`, "warning");
             }
         }
 
         async function deleteUser(id, username) {
-            if (!confirm(`Excluir permanentemente a conta @${username}? Esta ação não pode ser revertida.`)) return;
+            if (!confirm(`Excluir permanentemente a conta @${username}? Esta ação não pode ser desfeita.`)) return;
 
             const { error } = await supabaseClient.from('usuarios').delete().eq('id', id);
             
             if (error) {
                 mostrarToast('Erro ao excluir conta: ' + error.message, true);
-                adicionarLog(`Falha ao remover @${username}`, "error");
             } else {
                 mostrarToast(`Conta @${username} excluída com sucesso!`);
-                adicionarLog(`Conta @${username} removida do banco de dados.`, "success");
-                fetchUsers();
+                adicionarLog(`🗑️ Conta @${username} removida do banco de dados pelo Criador.`, "error");
             }
         }
 
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', () => {
-            if (verificarAcessoExclusivoCriador()) {
+        // INICIALIZAÇÃO
+        document.addEventListener('DOMContentLoaded', async () => {
+            const eCriador = await verificarAcessoExclusivoCriador();
+            if (eCriador) {
                 fetchServerStats();
                 fetchUsers();
-
-                setInterval(fetchServerStats, 8000);
-                setInterval(fetchUsers, 20000);
+                setInterval(fetchServerStats, 10000);
             }
         });
     </script>

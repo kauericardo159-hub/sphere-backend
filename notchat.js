@@ -1,6 +1,6 @@
 // ==========================================================================
 // NOTCHAT MODULE (notchat.js) - CENTRAL DE NOTIFICAÇÕES & AMIZADES PRO
-// Project Z v5.0 | Mentions Tracker, Pending Friend Requests & Batch Read
+// Sphere v5.0 | Mentions Tracker, Pending Friend Requests & 32px Button Standard
 // ==========================================================================
 
 let abaAtualNotChat = 'mencoes';
@@ -82,16 +82,21 @@ function obterSupabaseNotChat() {
     }
 
     .notchat-btn-readall {
+      height: 32px !important;
       background: rgba(255, 45, 85, 0.15);
       border: 1px solid rgba(255, 45, 85, 0.3);
       color: var(--chat-accent, #ff2d55);
       font-size: 0.72rem;
       font-weight: 700;
-      padding: 5px 10px;
-      border-radius: 14px;
+      padding: 0 12px;
+      border-radius: 16px;
       cursor: pointer;
       transition: all 0.2s ease;
       white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
 
     .notchat-btn-readall:hover {
@@ -99,16 +104,16 @@ function obterSupabaseNotChat() {
       color: #ffffff;
     }
 
-    /* Botão Circular Compacto (X) */
+    /* Botão Circular Compacto (X) em 32px */
     .btn-notchat-close {
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px !important;
+      max-width: 32px !important;
+      border-radius: 50% !important;
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.12);
       color: #d1c4d6;
-      width: 32px;
-      height: 32px;
-      min-width: 32px;
-      max-width: 32px;
-      border-radius: 50%;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
@@ -126,19 +131,21 @@ function obterSupabaseNotChat() {
       transform: scale(1.05);
     }
 
-    /* Abas Principais */
+    /* Abas Principais com Botões de 32px */
     .notchat-tabs-bar {
       display: flex;
       background: rgba(0, 0, 0, 0.3);
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 4px;
+      gap: 4px;
     }
 
     .notchat-tab-btn {
       flex: 1;
-      padding: 10px 6px;
+      height: 32px;
       background: transparent;
       border: none;
-      border-bottom: 2px solid transparent;
+      border-radius: 10px;
       color: #b3a5b8;
       font-size: 0.76rem;
       font-weight: 700;
@@ -152,9 +159,9 @@ function obterSupabaseNotChat() {
     }
 
     .notchat-tab-btn.active {
-      color: var(--chat-accent, #ff2d55);
-      border-bottom-color: var(--chat-accent, #ff2d55);
-      background: rgba(255, 45, 85, 0.06);
+      color: #ffffff;
+      background: rgba(255, 45, 85, 0.25);
+      border: 1px solid var(--chat-accent, #ff2d55);
     }
 
     /* Sub-barra de Filtros (Todas vs Não Lidas) */
@@ -168,15 +175,19 @@ function obterSupabaseNotChat() {
     }
 
     .notchat-filter-chip {
+      height: 32px;
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.1);
       color: #b3a5b8;
-      font-size: 0.7rem;
+      font-size: 0.72rem;
       font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 12px;
+      padding: 0 12px;
+      border-radius: 16px;
       cursor: pointer;
       transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .notchat-filter-chip.active {
@@ -303,35 +314,50 @@ function obterSupabaseNotChat() {
     }
 
     .btn-notchat-accept {
-      background: var(--chat-accent, #ff2d55);
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px !important;
+      max-width: 32px !important;
+      border-radius: 50% !important;
+      background: #2ed573;
       border: none;
-      color: #fff;
-      padding: 6px 10px;
-      border-radius: 8px;
-      font-size: 0.75rem;
-      font-weight: 700;
+      color: #000;
+      font-size: 0.85rem;
       cursor: pointer;
-      transition: background 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s ease;
+      padding: 0;
     }
 
     .btn-notchat-accept:hover {
-      background: #e02648;
+      background: #26af5f;
+      transform: scale(1.08);
     }
 
     .btn-notchat-reject {
-      background: rgba(255, 255, 255, 0.1);
-      border: none;
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px !important;
+      max-width: 32px !important;
+      border-radius: 50% !important;
+      background: rgba(255, 71, 87, 0.18);
+      border: 1px solid rgba(255, 71, 87, 0.4);
       color: #ff4757;
-      padding: 6px 10px;
-      border-radius: 8px;
-      font-size: 0.75rem;
-      font-weight: 700;
+      font-size: 0.85rem;
       cursor: pointer;
-      transition: background 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s ease;
+      padding: 0;
     }
 
     .btn-notchat-reject:hover {
-      background: rgba(255, 71, 87, 0.25);
+      background: #ff4757;
+      color: #ffffff;
+      transform: scale(1.08);
     }
 
     .notchat-empty {
@@ -544,8 +570,8 @@ async function carregarConteudoAbaNotChat(aba) {
               </div>
             </div>
             <div class="notchat-actions">
-              <button class="btn-notchat-accept" onclick="responderAmizadeNotChat(${p.id}, 'aceito')"><i class="fa-solid fa-check"></i></button>
-              <button class="btn-notchat-reject" onclick="responderAmizadeNotChat(${p.id}, 'recusado')"><i class="fa-solid fa-xmark"></i></button>
+              <button class="btn-notchat-accept" onclick="responderAmizadeNotChat(${p.id}, 'aceito')" title="Aceitar"><i class="fa-solid fa-check"></i></button>
+              <button class="btn-notchat-reject" onclick="responderAmizadeNotChat(${p.id}, 'recusado')" title="Recusar"><i class="fa-solid fa-xmark"></i></button>
             </div>
           </div>
         `;

@@ -2,558 +2,102 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Central de Moderação & Gestão Dev - Project Z Pro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Central de Moderação & Gestão Dev - Sphere Pro</title>
   
-  <!-- Dependências Externas -->
+  <!-- Prevenção Rigorosa de Cache -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <!-- Google Fonts & FontAwesome 6 Pro -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+  
+  <!-- Supabase JS Client v2 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  
-  <style>
-    :root {
-      --primary: #ff2d55;
-      --primary-hover: #e02648;
-      --primary-glow: rgba(255, 45, 85, 0.25);
-      --creator-gold: #ffd700;
-      --mod-blue: #00d2ff;
-      --admin-purple: #a55eea;
-      --bot-indigo: #6c5ce7;
-      --ban-red: #ff3838;
-      --verified-green: #2ed573;
-      
-      --bg-dark: #08040a;
-      --panel-bg: rgba(20, 11, 24, 0.92);
-      --card-bg: rgba(28, 16, 33, 0.65);
-      --card-hover: rgba(255, 45, 85, 0.08);
-      
-      --text: #ffffff;
-      --text-muted: #b3a5b8;
-      --text-dim: #7a6b80;
-      
-      --border-light: rgba(255, 255, 255, 0.08);
-      --border-accent: rgba(255, 45, 85, 0.28);
-      --radius-lg: 20px;
-      --radius-md: 12px;
-      --radius-sm: 8px;
-    }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; }
-    
-    body {
-      background: var(--bg-dark);
-      background-image: 
-        radial-gradient(circle at 15% 15%, rgba(255, 45, 85, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 85% 85%, rgba(108, 92, 231, 0.08) 0%, transparent 40%);
-      color: var(--text);
-      padding: 24px;
-      min-height: 100vh;
-    }
+  <!-- Módulo Oficial de Verificados -->
+  <script defer src="verificados.js?v=5.2.0"></script>
 
-    .container { max-width: 1380px; margin: 0 auto; }
-
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
-    ::-webkit-scrollbar-thumb { background: rgba(255, 45, 85, 0.4); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
-
-    /* Tela de Acesso Negado */
-    #access-denied-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 80vh;
-      text-align: center;
-      gap: 20px;
-    }
-
-    .lock-card {
-      background: var(--panel-bg);
-      border: 1px solid rgba(255, 56, 56, 0.35);
-      padding: 40px;
-      border-radius: var(--radius-lg);
-      backdrop-filter: blur(16px);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
-      max-width: 460px;
-      width: 100%;
-    }
-
-    .lock-card i { font-size: 3.5rem; color: var(--ban-red); margin-bottom: 10px; }
-    .lock-card h2 { font-size: 1.6rem; font-weight: 800; }
-    .lock-card p { color: var(--text-muted); font-size: 0.9rem; margin-top: 8px; line-height: 1.5; }
-
-    .btn-back {
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      padding: 12px 24px;
-      border-radius: var(--radius-md);
-      font-weight: 800;
-      font-size: 0.9rem;
-      cursor: pointer;
-      text-decoration: none;
-      margin-top: 20px;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      transition: all 0.2s ease;
-    }
-    .btn-back:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 4px 15px var(--primary-glow); }
-
-    /* Conteúdo Principal */
-    #dev-app-content { display: none; animation: fadeIn 0.3s ease-out; }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 24px;
-      background: var(--panel-bg);
-      padding: 20px 28px;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border-accent);
-      backdrop-filter: blur(16px);
-    }
-
-    .header-brand { display: flex; align-items: center; gap: 16px; }
-    .header-brand i { font-size: 2.2rem; color: var(--primary); filter: drop-shadow(0 0 10px var(--primary-glow)); }
-    .header-brand h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: 0.3px; }
-    .header-brand p { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; }
-
-    .header-actions { display: flex; align-items: center; gap: 12px; }
-
-    .btn-refresh {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--border-light);
-      color: var(--text-muted);
-      padding: 10px 16px;
-      border-radius: var(--radius-md);
-      font-weight: 700;
-      font-size: 0.85rem;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      transition: all 0.2s ease;
-    }
-    .btn-refresh:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
-
-    /* Navegação de Abas */
-    .panel-tabs-bar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 24px;
-      background: var(--panel-bg);
-      padding: 6px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border-light);
-    }
-
-    .panel-tab-btn {
-      flex: 1;
-      padding: 12px;
-      background: transparent;
-      border: none;
-      border-radius: var(--radius-sm);
-      color: var(--text-muted);
-      font-size: 0.88rem;
-      font-weight: 800;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: all 0.2s ease;
-    }
-    .panel-tab-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.04); }
-    .panel-tab-btn.active {
-      background: var(--primary);
-      color: #fff;
-      box-shadow: 0 4px 15px var(--primary-glow);
-    }
-
-    /* Métricas / Status Grid */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .stat-card {
-      background: var(--panel-bg);
-      border: 1px solid var(--border-light);
-      border-radius: var(--radius-md);
-      padding: 18px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      backdrop-filter: blur(12px);
-      transition: all 0.2s ease;
-    }
-    .stat-card:hover { border-color: var(--border-accent); transform: translateY(-2px); }
-
-    .stat-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.4rem;
-      flex-shrink: 0;
-    }
-
-    .stat-info h4 { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; }
-    .stat-info span { font-size: 1.5rem; font-weight: 800; color: #fff; display: block; margin-top: 2px; }
-
-    /* Banner do Criador */
-    .creator-card-highlight {
-      background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(20, 11, 24, 0.95) 100%);
-      border: 1px solid rgba(255, 215, 0, 0.4);
-      border-radius: var(--radius-lg);
-      padding: 18px 24px;
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      box-shadow: 0 8px 30px rgba(255, 215, 0, 0.1);
-    }
-
-    .creator-info { display: flex; align-items: center; gap: 16px; }
-    .creator-avatar { width: 52px; height: 52px; border-radius: 50%; border: 3px solid var(--creator-gold); object-fit: cover; }
-    .creator-details h3 { font-size: 1.1rem; color: #fff; font-weight: 800; display: flex; align-items: center; gap: 8px; }
-    .creator-details p { font-size: 0.82rem; color: var(--text-muted); margin-top: 2px; }
-
-    /* Filtros e Busca */
-    .controls-bar {
-      display: flex;
-      gap: 14px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .search-box {
-      position: relative;
-      flex: 1;
-      min-width: 280px;
-    }
-    .search-box i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-dim); }
-
-    .search-input {
-      width: 100%;
-      padding: 12px 16px 12px 42px;
-      background: var(--panel-bg);
-      border: 1px solid var(--border-light);
-      border-radius: var(--radius-md);
-      color: #fff;
-      outline: none;
-      font-size: 0.88rem;
-      transition: all 0.2s ease;
-    }
-    .search-input:focus { border-color: var(--primary); box-shadow: 0 0 15px var(--primary-glow); }
-
-    .filter-btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
-    .filter-btn {
-      background: var(--panel-bg);
-      border: 1px solid var(--border-light);
-      color: var(--text-muted);
-      padding: 10px 16px;
-      border-radius: var(--radius-md);
-      cursor: pointer;
-      font-size: 0.82rem;
-      font-weight: 700;
-      transition: all 0.2s ease;
-    }
-    .filter-btn.active, .filter-btn:hover {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-      box-shadow: 0 4px 12px var(--primary-glow);
-    }
-
-    /* Tabelas */
-    .table-card {
-      background: var(--panel-bg);
-      border: 1px solid var(--border-accent);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    }
-
-    .table-responsive { width: 100%; overflow-x: auto; }
-
-    table { width: 100%; border-collapse: collapse; text-align: left; }
-    th {
-      background: rgba(255, 45, 85, 0.12);
-      color: var(--primary);
-      text-transform: uppercase;
-      font-size: 0.75rem;
-      font-weight: 800;
-      letter-spacing: 0.8px;
-      padding: 16px;
-      border-bottom: 1px solid var(--border-accent);
-    }
-
-    td { padding: 14px 16px; border-bottom: 1px solid var(--border-light); vertical-align: middle; font-size: 0.88rem; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover { background: var(--card-hover); }
-
-    .creator-row { background: rgba(255, 215, 0, 0.04) !important; }
-    .banned-row { background: rgba(255, 56, 56, 0.08) !important; }
-
-    .avatar-wrapper { position: relative; width: 44px; height: 44px; flex-shrink: 0; }
-    .avatar-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-light); }
-    .avatar-img.creator-border { border-color: var(--creator-gold); box-shadow: 0 0 10px rgba(255, 215, 0, 0.4); }
-
-    .user-info-cell { display: flex; flex-direction: column; gap: 2px; }
-    .user-name-row { font-weight: 800; color: #fff; display: flex; align-items: center; gap: 6px; }
-    .user-id-sub { font-size: 0.75rem; color: var(--text-dim); }
-
-    /* Badges e Tags */
-    .badges-container { display: flex; gap: 6px; flex-wrap: wrap; }
-    .badge {
-      font-size: 0.68rem;
-      font-weight: 800;
-      padding: 4px 8px;
-      border-radius: var(--radius-sm);
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-    }
-
-    .badge-creator { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; }
-    .badge-mod { background: var(--mod-blue); color: #000; }
-    .badge-admin { background: var(--admin-purple); color: #fff; }
-    .badge-bot { background: var(--bot-indigo); color: #fff; }
-    .badge-verified { background: var(--verified-green); color: #000; }
-    .badge-banned { background: var(--ban-red); color: #fff; }
-    .badge-level { background: rgba(255, 45, 85, 0.2); color: #ff2d55; border: 1px solid rgba(255, 45, 85, 0.3); }
-    .badge-user { background: rgba(255, 255, 255, 0.08); color: var(--text-muted); }
-
-    /* Seletor de Cargo */
-    select.role-select {
-      background: #140b18;
-      color: #fff;
-      border: 1px solid var(--border-light);
-      padding: 6px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 0.82rem;
-      font-weight: 600;
-      outline: none;
-      cursor: pointer;
-      transition: border-color 0.2s ease;
-    }
-    select.role-select:focus { border-color: var(--primary); }
-
-    /* Grupo de Botões */
-    .action-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-
-    .action-btn {
-      padding: 7px 11px;
-      border-radius: var(--radius-sm);
-      border: none;
-      cursor: pointer;
-      font-size: 0.78rem;
-      font-weight: 800;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      transition: all 0.2s ease;
-    }
-
-    .action-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-    .action-btn:not(:disabled):active { transform: scale(0.96); }
-
-    .btn-edit { background: rgba(0, 210, 255, 0.15); color: var(--mod-blue); border: 1px solid rgba(0, 210, 255, 0.3); }
-    .btn-edit:hover:not(:disabled) { background: var(--mod-blue); color: #000; }
-
-    .btn-level { background: rgba(255, 45, 85, 0.15); color: var(--primary); border: 1px solid rgba(255, 45, 85, 0.3); }
-    .btn-level:hover:not(:disabled) { background: var(--primary); color: #fff; }
-
-    .btn-ban { background: rgba(255, 56, 56, 0.15); color: var(--ban-red); border: 1px solid rgba(255, 56, 56, 0.3); }
-    .btn-ban:hover:not(:disabled) { background: var(--ban-red); color: #fff; }
-
-    .btn-unban { background: rgba(46, 213, 115, 0.15); color: var(--verified-green); border: 1px solid rgba(46, 213, 115, 0.3); }
-    .btn-unban:hover:not(:disabled) { background: var(--verified-green); color: #000; }
-
-    .btn-verify { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); border: 1px solid var(--border-light); }
-    .btn-verify:hover:not(:disabled) { background: rgba(255, 255, 255, 0.15); color: #fff; }
-
-    .btn-reset-media { background: rgba(255, 193, 7, 0.15); color: #ffc107; border: 1px solid rgba(255, 193, 7, 0.3); }
-    .btn-reset-media:hover:not(:disabled) { background: #ffc107; color: #000; }
-
-    /* Modais Customizados */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(8, 4, 10, 0.85);
-      backdrop-filter: blur(12px);
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      animation: fadeIn 0.2s ease-out;
-    }
-
-    .modal-card {
-      background: #180e1b;
-      border: 1px solid var(--border-accent);
-      border-radius: var(--radius-lg);
-      padding: 24px;
-      width: 100%;
-      max-width: 500px;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
-    }
-
-    .modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 18px;
-    }
-
-    .modal-header h3 { font-size: 1.1rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px; }
-
-    .btn-modal-close {
-      background: rgba(255, 255, 255, 0.08);
-      border: none;
-      color: #fff;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modal-form-group { margin-bottom: 14px; }
-    .modal-form-group label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; }
-    .modal-form-group input, .modal-form-group textarea {
-      width: 100%;
-      padding: 10px 14px;
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid var(--border-light);
-      border-radius: var(--radius-md);
-      color: #fff;
-      outline: none;
-      font-size: 0.88rem;
-    }
-    .modal-form-group input:focus, .modal-form-group textarea:focus { border-color: var(--primary); }
-
-    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-    .btn-modal-save { flex: 1; padding: 12px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-md); font-weight: 800; cursor: pointer; }
-    .btn-modal-cancel { flex: 1; padding: 12px; background: rgba(255, 255, 255, 0.08); color: var(--text-muted); border: none; border-radius: var(--radius-md); font-weight: 800; cursor: pointer; }
-
-    /* Audit Logs */
-    .audit-logs-card {
-      background: var(--panel-bg);
-      border: 1px solid var(--border-accent);
-      border-radius: var(--radius-lg);
-      padding: 20px;
-    }
-
-    .audit-log-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px;
-      border-bottom: 1px solid var(--border-light);
-      font-size: 0.85rem;
-    }
-    .audit-log-item:last-child { border-bottom: none; }
-    .audit-time { color: var(--text-dim); font-size: 0.75rem; font-family: monospace; }
-
-    /* Toast Notification */
-    #dev-toast {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: var(--panel-bg);
-      border: 1px solid var(--primary);
-      color: #fff;
-      padding: 14px 20px;
-      border-radius: var(--radius-md);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      z-index: 10000;
-      transform: translateY(100px);
-      opacity: 0;
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    #dev-toast.show { transform: translateY(0); opacity: 1; }
-
-    @media (max-width: 768px) {
-      body { padding: 12px; }
-      header { flex-direction: column; gap: 16px; text-align: center; }
-      .header-brand { flex-direction: column; }
-      .controls-bar { flex-direction: column; align-items: stretch; }
-      .filter-btn-group { justify-content: center; }
-      .panel-tabs-bar { flex-direction: column; }
-    }
-  </style>
+  <!-- Folha de Estilo Exclusiva do Painel Dev -->
+  <link rel="stylesheet" href="dev.css?v=5.2.0">
 </head>
 <body>
 
-  <div class="container">
+  <div class="dev-container">
 
-    <!-- Tela de Acesso Negado -->
-    <div id="access-denied-screen" style="display: none;">
+    <!-- ========================================================================== -->
+    <!-- TELA DE ACESSO NEGADO (Para Usuários Sem Permissão / Visitantes) -->
+    <!-- ========================================================================== -->
+    <div id="access-denied-screen" class="dev-access-denied" style="display: none;">
       <div class="lock-card">
-        <i class="fa-solid fa-user-shield"></i>
-        <h2>Acesso Restrito</h2>
-        <p>Apenas administradores, moderadores e o criador do site possuem permissão para acessar a Central de Moderação.</p>
-        <a href="index.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Voltar ao Início</a>
+        <div class="lock-icon-wrapper">
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <h2>Acesso Restrito ao Sphere Dev</h2>
+        <p>Sua conta atual não possui privilégios administrativos (Criador, Mod ou Admin) para acessar a Central de Moderação.</p>
+        <div class="access-warning-badge">
+          <i class="fa-solid fa-triangle-exclamation"></i> Usuários normais, convidados e contas apenas verificadas não têm acesso.
+        </div>
+        <a href="index.html" class="btn-back-home">
+          <i class="fa-solid fa-arrow-left"></i> Voltar à Aplicação
+        </a>
       </div>
     </div>
 
-    <!-- Aplicação Principal do Painel -->
-    <div id="dev-app-content">
-      <header>
+    <!-- ========================================================================== -->
+    <!-- APLICAÇÃO PRINCIPAL DO PAINEL DEV -->
+    <!-- ========================================================================== -->
+    <div id="dev-app-content" style="display: none;">
+      
+      <!-- Cabeçalho Principal com Identificação do Operador -->
+      <header class="dev-header">
         <div class="header-brand">
-          <i class="fa-solid fa-shield-halved"></i>
-          <div>
+          <div class="brand-icon-box">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div class="brand-titles">
             <h1>CENTRAL DE MODERAÇÃO & DEV</h1>
-            <p>Gerenciamento do Servidor, Gestão de Nível/XP, Auditoria e Segurança</p>
+            <p>Gerenciamento do Servidor, Permissões RBAC, Níveis/XP e Auditoria de Segurança</p>
           </div>
         </div>
-        <div class="header-actions">
-          <button class="btn-refresh" onclick="carregarTudoDev()">
-            <i class="fa-solid fa-rotate-right"></i> Atualizar Dados
-          </button>
-          <a href="index.html" class="btn-back" style="margin: 0;"><i class="fa-solid fa-house"></i> Ir ao Site</a>
+
+        <!-- Card da Conta Logada (Operador Atual) -->
+        <div class="header-operator-card" id="header-operator-card">
+          <div class="operator-avatar-wrapper">
+            <img id="operator-avatar-img" src="" class="operator-avatar" alt="Avatar Operador">
+            <img id="operator-moldura-img" src="" class="operator-moldura" style="display:none;" alt="Moldura">
+          </div>
+          <div class="operator-meta">
+            <div class="operator-name-row">
+              <span id="operator-display-name" class="operator-name">Carregando...</span>
+              <span id="operator-role-badge"></span>
+            </div>
+            <span id="operator-username" class="operator-handle">@usuario</span>
+          </div>
+          <a href="index.html" class="btn-header-home" title="Ir ao site principal">
+            <i class="fa-solid fa-house"></i>
+          </a>
         </div>
       </header>
 
-      <!-- Métricas Globais -->
-      <div class="stats-grid">
+      <!-- Métricas Globais da Comunidade -->
+      <section class="stats-grid">
         <div class="stat-card">
-          <div class="stat-icon" style="background: rgba(255, 45, 85, 0.12); color: var(--primary);">
+          <div class="stat-icon icon-users">
             <i class="fa-solid fa-users"></i>
           </div>
           <div class="stat-info">
-            <h4>Total Contas</h4>
+            <h4>Total de Contas</h4>
             <span id="stat-total">0</span>
           </div>
         </div>
         
         <div class="stat-card">
-          <div class="stat-icon" style="background: rgba(255, 215, 0, 0.12); color: var(--creator-gold);">
+          <div class="stat-icon icon-creators">
             <i class="fa-solid fa-crown"></i>
           </div>
           <div class="stat-info">
@@ -563,7 +107,7 @@
         </div>
 
         <div class="stat-card">
-          <div class="stat-icon" style="background: rgba(0, 210, 255, 0.12); color: var(--mod-blue);">
+          <div class="stat-icon icon-staff">
             <i class="fa-solid fa-user-shield"></i>
           </div>
           <div class="stat-info">
@@ -573,7 +117,7 @@
         </div>
 
         <div class="stat-card">
-          <div class="stat-icon" style="background: rgba(255, 56, 56, 0.12); color: var(--ban-red);">
+          <div class="stat-icon icon-banned">
             <i class="fa-solid fa-user-slash"></i>
           </div>
           <div class="stat-info">
@@ -581,18 +125,18 @@
             <span id="stat-banned">0</span>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Destaque do Criador -->
-      <div id="creator-banner" class="creator-card-highlight">
+      <!-- Banner Destaque do Criador Oficial -->
+      <section id="creator-banner" class="creator-card-highlight">
         <div class="creator-info">
-          <i class="fa-solid fa-spinner fa-spin" style="color: var(--creator-gold); font-size: 1.5rem;"></i>
-          <span style="color: var(--text-muted);">Verificando criador no banco de dados...</span>
+          <i class="fa-solid fa-spinner fa-spin creator-loading-icon"></i>
+          <span class="creator-loading-text">Verificando criador no banco de dados...</span>
         </div>
-      </div>
+      </section>
 
-      <!-- Navegação de Abas -->
-      <div class="panel-tabs-bar">
+      <!-- Navegação por Abas -->
+      <nav class="panel-tabs-bar">
         <button class="panel-tab-btn active" onclick="trocarAbaPainel('contas', this)">
           <i class="fa-solid fa-users-gear"></i> Gerenciador de Contas
         </button>
@@ -600,12 +144,15 @@
           <i class="fa-solid fa-comments"></i> Inspeção de Mensagens
         </button>
         <button class="panel-tab-btn" onclick="trocarAbaPainel('auditoria', this)">
-          <i class="fa-solid fa-list-check"></i> Logs de Auditoria
+          <i class="fa-solid fa-receipt"></i> Logs de Auditoria
         </button>
-      </div>
+        <button class="btn-refresh-data" onclick="carregarTudoDev()" title="Atualizar Dados do Servidor">
+          <i class="fa-solid fa-rotate-right"></i> Atualizar
+        </button>
+      </nav>
 
       <!-- SEÇÃO 1: GERENCIADOR DE CONTAS -->
-      <div id="sec-contas" class="tab-content-panel">
+      <section id="sec-contas" class="tab-content-panel">
         <div class="controls-bar">
           <div class="search-box">
             <i class="fa-solid fa-magnifying-glass"></i>
@@ -628,21 +175,25 @@
                 <tr>
                   <th>Membro</th>
                   <th>ID / Nível</th>
-                  <th>Selos</th>
+                  <th>Selos Oficiais</th>
                   <th>Cargo</th>
                   <th>Ações de Moderação & Nível</th>
                 </tr>
               </thead>
               <tbody id="dev-users-list">
-                <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando contas...</td></tr>
+                <tr>
+                  <td colspan="5" class="table-state-msg">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Sincronizando com o Supabase...
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- SEÇÃO 2: INSPEÇÃO DE MENSAGENS -->
-      <div id="sec-mensagens" class="tab-content-panel" style="display: none;">
+      <section id="sec-mensagens" class="tab-content-panel" style="display: none;">
         <div class="table-card">
           <div class="table-responsive">
             <table>
@@ -656,62 +207,68 @@
                 </tr>
               </thead>
               <tbody id="dev-msgs-list">
-                <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando mensagens recentes...</td></tr>
+                <tr>
+                  <td colspan="5" class="table-state-msg">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Carregando mensagens do sistema...
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- SEÇÃO 3: LOGS DE AUDITORIA -->
-      <div id="sec-auditoria" class="tab-content-panel" style="display: none;">
+      <section id="sec-auditoria" class="tab-content-panel" style="display: none;">
         <div class="audit-logs-card">
-          <h3 style="font-size: 1rem; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-receipt" style="color: var(--primary);"></i> Registros de Moderação Recentes
+          <h3>
+            <i class="fa-solid fa-receipt"></i> Registros de Moderação da Sessão
           </h3>
-          <div id="audit-logs-list">
-            <div class="audit-log-item"><span style="color: var(--text-muted);">Nenhuma ação registrada nesta sessão.</span></div>
+          <div id="audit-logs-list" class="audit-logs-list">
+            <div class="audit-log-item empty">
+              <span>Nenhuma ação registrada nesta sessão.</span>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
     </div>
 
   </div>
 
-  <!-- Modal de Edição de Perfil do Desenvolvedor -->
+  <!-- Modal 1: Edição Completa de Perfil do Usuário -->
   <div id="modal-edit-user" class="modal-overlay" style="display: none;">
     <div class="modal-card">
       <div class="modal-header">
-        <h3><i class="fa-solid fa-user-pen" style="color: var(--mod-blue);"></i> Editar Dados do Usuário</h3>
+        <h3><i class="fa-solid fa-user-pen"></i> Editar Perfil do Usuário</h3>
         <button class="btn-modal-close" onclick="fecharModalEdicao()"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
       <input type="hidden" id="edit-user-id">
       
       <div class="modal-form-group">
-        <label>Nome de Exibição (Display Name):</label>
+        <label for="edit-display-name">Nome de Exibição (Display Name):</label>
         <input type="text" id="edit-display-name" placeholder="Ex: Usuário VIP">
       </div>
 
       <div class="modal-form-group">
-        <label>Handle de Usuário (@username):</label>
+        <label for="edit-username">Handle de Usuário (@username):</label>
         <input type="text" id="edit-username" placeholder="Ex: usuario_vip">
       </div>
 
       <div class="modal-form-group">
-        <label>Biografia (Sobre mim):</label>
+        <label for="edit-sobre">Biografia (Sobre mim):</label>
         <textarea id="edit-sobre" rows="3" placeholder="Biografia do usuário..."></textarea>
       </div>
 
       <div class="modal-form-group">
-        <label>Selos / Verificados (Separados por |):</label>
-        <input type="text" id="edit-verificados" placeholder="Ex: Oficial|VIP|Developer">
+        <label for="edit-verificados">Selos / Verificados (Separados por | ou vírgula):</label>
+        <input type="text" id="edit-verificados" placeholder="Ex: creator, verified, dev">
       </div>
 
       <div class="modal-form-group">
-        <label>Tags de Perfil (Separadas por |):</label>
-        <input type="text" id="edit-tags" placeholder="Ex: Gamer|Animes|RP">
+        <label for="edit-tags">Tags de Perfil (Separadas por | ou vírgula):</label>
+        <input type="text" id="edit-tags" placeholder="Ex: Gamer, Animes, RP">
       </div>
 
       <div class="modal-actions">
@@ -721,24 +278,80 @@
     </div>
   </div>
 
-  <!-- Toast Notification -->
-  <div id="dev-toast">
-    <i class="fa-solid fa-circle-check" style="color: var(--verified-green);"></i>
+  <!-- Modal 2: Inserção de Motivo de Banimento -->
+  <div id="modal-ban-reason" class="modal-overlay" style="display: none;">
+    <div class="modal-card modal-ban-card">
+      <div class="modal-header">
+        <h3 class="ban-title"><i class="fa-solid fa-user-slash"></i> Confirmar Banimento</h3>
+        <button class="btn-modal-close" onclick="fecharModalBanimento()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <input type="hidden" id="ban-user-id">
+      <input type="hidden" id="ban-username-holder">
+
+      <p class="ban-modal-desc">
+        Você está prestes a suspender permanentemente o usuário <strong id="ban-user-target-name">@usuario</strong>. Informe o motivo abaixo:
+      </p>
+
+      <div class="modal-form-group">
+        <label for="ban-reason-input">Motivo da Punição:</label>
+        <textarea id="ban-reason-input" rows="3" placeholder="Ex: Uso de linguagem ofensiva e violação dos termos da comunidade."></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" onclick="fecharModalBanimento()">Cancelar</button>
+        <button class="btn-modal-danger" onclick="executarBanimentoComMotivo()">Confirmar Banimento</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast de Notificação do Painel -->
+  <div id="dev-toast" class="dev-toast">
+    <i class="fa-solid fa-circle-check"></i>
     <span id="dev-toast-msg">Ação executada com sucesso!</span>
   </div>
 
+  <!-- Lógica de Controle com Conexão Realtime -->
   <script>
+    'use strict';
+
     const SUPABASE_URL = "https://phvnxlogznbplynwflch.supabase.co";
     const SUPABASE_KEY = "sb_publishable_CvzU52jm8tRyWBE0g4UvKg_J_nVMIAQ";
-    const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+    
+    let dbClientDev = null;
+
+    function obterSupabaseDev() {
+      if (dbClientDev) return dbClientDev;
+      if (window.supabaseClient) {
+        dbClientDev = window.supabaseClient;
+        return dbClientDev;
+      }
+      if (window.supabase && typeof window.supabase.createClient === 'function') {
+        dbClientDev = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        window.supabaseClient = dbClientDev;
+        return dbClientDev;
+      }
+      return null;
+    }
 
     let listaUsuariosCache = [];
     let listaLogsAuditoria = [];
     let filtroCategoriaAtual = 'todos';
     let usuarioLogadoSessao = null;
+    let inscricaoRealtime = null;
+
+    function sanitizarHtmlDev(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
 
     function registrarLog(acao, alvo) {
-      const hora = new Date().toLocaleTimeString();
+      const hora = new Date().toLocaleTimeString('pt-BR');
       listaLogsAuditoria.unshift({ acao, alvo, hora });
       renderizarLogsAuditoria();
     }
@@ -748,14 +361,14 @@
       if (!container) return;
 
       if (listaLogsAuditoria.length === 0) {
-        container.innerHTML = `<div class="audit-log-item"><span style="color: var(--text-muted);">Nenhuma ação registrada nesta sessão.</span></div>`;
+        container.innerHTML = `<div class="audit-log-item empty"><span>Nenhuma ação registrada nesta sessão.</span></div>`;
         return;
       }
 
       container.innerHTML = listaLogsAuditoria.map(log => `
         <div class="audit-log-item">
-          <div>
-            <strong style="color: var(--primary);">${log.acao}</strong> em <span>@${log.alvo}</span>
+          <div class="audit-log-desc">
+            <strong class="action-title">${sanitizarHtmlDev(log.acao)}</strong> no alvo <span class="target-name">@${sanitizarHtmlDev(log.alvo)}</span>
           </div>
           <span class="audit-time">${log.hora}</span>
         </div>
@@ -765,17 +378,17 @@
     function mostrarToast(mensagem, eErro = false) {
       const toast = document.getElementById('dev-toast');
       const toastMsg = document.getElementById('dev-toast-msg');
-      const icon = toast.querySelector('i');
+      if (!toast || !toastMsg) return;
 
+      const icon = toast.querySelector('i');
       toastMsg.innerText = mensagem;
+
       if (eErro) {
         icon.className = "fa-solid fa-circle-exclamation";
-        icon.style.color = "var(--ban-red)";
-        toast.style.borderColor = "var(--ban-red)";
+        toast.classList.add('error');
       } else {
         icon.className = "fa-solid fa-circle-check";
-        icon.style.color = "var(--verified-green)";
-        toast.style.borderColor = "var(--primary)";
+        toast.classList.remove('error');
       }
 
       toast.classList.add('show');
@@ -784,7 +397,7 @@
 
     function trocarAbaPainel(abaNome, btnEl) {
       document.querySelectorAll('.panel-tab-btn').forEach(b => b.classList.remove('active'));
-      btnEl.classList.add('active');
+      if (btnEl) btnEl.classList.add('active');
 
       document.querySelectorAll('.tab-content-panel').forEach(p => p.style.display = 'none');
       const alvo = document.getElementById(`sec-${abaNome}`);
@@ -793,20 +406,70 @@
       if (abaNome === 'mensagens') carregarMensagensDev();
     }
 
-    // 1. AUTENTICAÇÃO E VERIFICAÇÃO DE PERMISSÕES
-    function verificarAcesso() {
+    // VERIFICAÇÃO RIGOROSA DIRETO NO BANCO DE DADOS
+    async function verificarAcessoERenderizarOperador() {
       try {
-        const raw = localStorage.getItem('usuario_logado') || localStorage.getItem('usuario');
+        const raw = localStorage.getItem('usuario_logado') || localStorage.getItem('usuario') || localStorage.getItem('user');
         if (!raw) { bloquearAcesso(); return false; }
 
-        const user = JSON.parse(raw);
-        usuarioLogadoSessao = user;
+        const userLocal = JSON.parse(raw);
+        if (!userLocal || !userLocal.id) { bloquearAcesso(); return false; }
 
-        const eCriador = Boolean(user.is_creator);
-        const eStaff = user.role === 'mod' || user.role === 'admin';
+        const clientSupabase = obterSupabaseDev();
+        if (!clientSupabase) { bloquearAcesso(); return false; }
 
-        if (!eCriador && !eStaff) { bloquearAcesso(); return false; }
+        // Consulta direta ao Supabase para verificar permissões atualizadas no banco de dados
+        const { data: userBD, error } = await clientSupabase
+          .from('usuarios')
+          .select('*')
+          .eq('id', userLocal.id)
+          .single();
 
+        if (error || !userBD) {
+          bloquearAcesso();
+          return false;
+        }
+
+        usuarioLogadoSessao = userBD;
+
+        const eCriador = Boolean(userBD.is_creator || userBD.is_criador);
+        const eStaff = userBD.role === 'mod' || userBD.role === 'admin' || Boolean(userBD.is_admin) || Boolean(userBD.is_mod);
+
+        // REGRA ESTRITA: Se for usuário normal, não logado ou apenas verificado, BLOQUEIA TOTALMENTE
+        if (!eCriador && !eStaff) {
+          bloquearAcesso();
+          return false;
+        }
+
+        // Renderiza card do Operador Atual no Topo
+        const nameEl = document.getElementById('operator-display-name');
+        const handleEl = document.getElementById('operator-username');
+        const avatarImg = document.getElementById('operator-avatar-img');
+        const molduraImg = document.getElementById('operator-moldura-img');
+        const roleBadge = document.getElementById('operator-role-badge');
+
+        const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(userBD.username || 'user')}`;
+
+        if (nameEl) nameEl.innerText = userBD.display_name || userBD.nome || userBD.username || 'Operador';
+        if (handleEl) handleEl.innerText = `@${userBD.username || 'usuario'}`;
+        if (avatarImg) avatarImg.src = (userBD.avatar_url && userBD.avatar_url.trim() !== '') ? userBD.avatar_url : defaultAvatar;
+
+        if (molduraImg) {
+          if (userBD.moldura_url && userBD.moldura_url.trim() !== '') {
+            molduraImg.src = userBD.moldura_url;
+            molduraImg.style.display = 'block';
+          } else {
+            molduraImg.style.display = 'none';
+          }
+        }
+
+        if (roleBadge) {
+          if (eCriador) roleBadge.innerHTML = `<span class="badge badge-creator"><i class="fa-solid fa-wand-magic-sparkles"></i> CRIADOR</span>`;
+          else if (userBD.role === 'admin' || userBD.is_admin) roleBadge.innerHTML = `<span class="badge badge-admin"><i class="fa-solid fa-crown"></i> ADMIN</span>`;
+          else if (userBD.role === 'mod' || userBD.is_mod) roleBadge.innerHTML = `<span class="badge badge-mod"><i class="fa-solid fa-shield"></i> MOD</span>`;
+        }
+
+        document.getElementById('access-denied-screen').style.display = 'none';
         document.getElementById('dev-app-content').style.display = 'block';
         return true;
       } catch (e) {
@@ -820,62 +483,88 @@
       document.getElementById('dev-app-content').style.display = 'none';
     }
 
-    // 2. CARREGAMENTO DOS DADOS DO BANCO DE DADOS
+    // CARREGAMENTO DE DADOS E SINCRONIZAÇÃO AO VIVO (REALTIME)
     async function carregarTudoDev() {
-      if (!verificarAcesso()) return;
+      const liberado = await verificarAcessoERenderizarOperador();
+      if (!liberado) return;
 
+      const clientSupabase = obterSupabaseDev();
       const tbody = document.getElementById('dev-users-list');
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;"><i class="fa-solid fa-spinner fa-spin"></i> Sincronizando com o Supabase...</td></tr>`;
 
-      const { data: usuarios, error } = await supabaseClient
+      if (!clientSupabase) {
+        tbody.innerHTML = `<tr><td colspan="5" class="table-state-msg error"><i class="fa-solid fa-triangle-exclamation"></i> Cliente Supabase não inicializado.</td></tr>`;
+        return;
+      }
+
+      const { data: usuarios, error } = await clientSupabase
         .from('usuarios')
         .select('*')
         .order('id', { ascending: true });
 
       if (error || !usuarios) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--ban-red); padding: 30px;">Erro ao carregar banco: ${error ? error.message : 'Falha'}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="table-state-msg error">Erro ao carregar banco: ${error ? error.message : 'Falha desconhecida'}</td></tr>`;
         return;
       }
 
       listaUsuariosCache = usuarios;
       atualizarEstatisticas(usuarios);
       filtrarEExibir();
+
+      // Ativa escuta em tempo real se ainda não configurada
+      ativarInscricaoRealtimeSupabase();
+    }
+
+    function ativarInscricaoRealtimeSupabase() {
+      const clientSupabase = obterSupabaseDev();
+      if (!clientSupabase || inscricaoRealtime) return;
+
+      inscricaoRealtime = clientSupabase
+        .channel('dev-realtime-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'usuarios' }, () => {
+          carregarTudoDev();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'mensagens' }, () => {
+          const secMsgs = document.getElementById('sec-mensagens');
+          if (secMsgs && secMsgs.style.display !== 'none') {
+            carregarMensagensDev();
+          }
+        })
+        .subscribe();
     }
 
     function atualizarEstatisticas(usuarios) {
       document.getElementById('stat-total').innerText = usuarios.length;
-      document.getElementById('stat-creators').innerText = usuarios.filter(u => u.is_creator === true).length;
-      document.getElementById('stat-mods').innerText = usuarios.filter(u => u.role === 'mod' || u.role === 'admin').length;
-      document.getElementById('stat-banned').innerText = usuarios.filter(u => u.is_banned === true).length;
+      document.getElementById('stat-creators').innerText = usuarios.filter(u => Boolean(u.is_creator || u.is_criador)).length;
+      document.getElementById('stat-mods').innerText = usuarios.filter(u => u.role === 'mod' || u.role === 'admin' || Boolean(u.is_admin) || Boolean(u.is_mod)).length;
+      document.getElementById('stat-banned').innerText = usuarios.filter(u => Boolean(u.is_banned)).length;
 
-      const criadorReal = usuarios.find(u => u.is_creator === true);
+      const criadorReal = usuarios.find(u => Boolean(u.is_creator || u.is_criador));
       const creatorBanner = document.getElementById('creator-banner');
 
       if (criadorReal) {
-        const usernameDisplay = criadorReal.username || 'criador';
+        const usernameDisplay = sanitizarHtmlDev(criadorReal.username || 'criador');
         const defaultAvatar = `https://ui-avatars.com/api/?background=ffd700&color=000&name=${encodeURIComponent(usernameDisplay)}`;
-        const avatarSrc = criadorReal.avatar_url || defaultAvatar;
+        const avatarSrc = (criadorReal.avatar_url && criadorReal.avatar_url.trim() !== '') ? criadorReal.avatar_url : defaultAvatar;
 
         creatorBanner.innerHTML = `
           <div class="creator-info">
-            <img src="${avatarSrc}" class="creator-avatar" onerror="this.onerror=null; this.src='${defaultAvatar}';">
+            <img src="${avatarSrc}" class="creator-avatar" onerror="this.onerror=null; this.src='${defaultAvatar}';" alt="Criador">
             <div class="creator-details">
-              <h3>@${usernameDisplay} <i class="fa-solid fa-crown" style="color: var(--creator-gold);"></i></h3>
-              <p>${criadorReal.display_name || 'Criador Oficial'} • Nível ${criadorReal.nivel || 1} • Conta Protegida</p>
+              <h3>@${usernameDisplay} <i class="fa-solid fa-crown" style="color: #ffd700;"></i></h3>
+              <p>${sanitizarHtmlDev(criadorReal.display_name || 'Criador Oficial')} • Nível ${criadorReal.nivel || 1} • Conta Imune e Protegida</p>
             </div>
           </div>
-          <span class="badge badge-creator"><i class="fa-solid fa-wand-magic-sparkles"></i> CRIADOR</span>
+          <span class="badge badge-creator"><i class="fa-solid fa-wand-magic-sparkles"></i> CRIADOR DO SYSTEM</span>
         `;
       } else {
-        creatorBanner.innerHTML = `<div class="creator-info"><span style="color: var(--text-muted);">Nenhum Criador cadastrado com is_creator = true.</span></div>`;
+        creatorBanner.innerHTML = `<div class="creator-info"><span style="color: var(--text-muted);">Nenhum Criador cadastrado no sistema.</span></div>`;
       }
     }
 
-    // 3. TABELA DE CONTAS E FILTROS DE BUSCA
     function definirFiltroCategoria(categoria, btnElement) {
       filtroCategoriaAtual = categoria;
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btnElement.classList.add('active');
+      if (btnElement) btnElement.classList.add('active');
       filtrarEExibir();
     }
 
@@ -890,7 +579,7 @@
         const textMatch = nameMatch || displayMatch || idMatch || levelMatch;
 
         let categoryMatch = true;
-        if (filtroCategoriaAtual === 'staff') categoryMatch = u.is_creator || u.role === 'mod' || u.role === 'admin';
+        if (filtroCategoriaAtual === 'staff') categoryMatch = (u.is_creator || u.is_criador) || u.role === 'mod' || u.role === 'admin' || u.is_admin || u.is_mod;
         if (filtroCategoriaAtual === 'bots') categoryMatch = u.username === 'bot_assistente' || u.role === 'bot';
         if (filtroCategoriaAtual === 'verificados') categoryMatch = Boolean(u.is_verified);
         if (filtroCategoriaAtual === 'banidos') categoryMatch = Boolean(u.is_banned);
@@ -906,37 +595,41 @@
       tbody.innerHTML = '';
 
       if (usuarios.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding: 30px;">Nenhuma conta encontrada com este filtro.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="table-state-msg">Nenhuma conta encontrada com o filtro selecionado.</td></tr>`;
         return;
       }
 
-      usuarios.forEach(user => {
-        const usernameDisplay = user.username || 'Sem Nome';
-        const nameDisplay = user.display_name || usernameDisplay;
-        const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(usernameDisplay)}`;
-        const avatarSrc = user.avatar_url || defaultAvatar;
+      const souAdminOuCriador = Boolean(usuarioLogadoSessao.is_creator || usuarioLogadoSessao.is_criador) || usuarioLogadoSessao.role === 'admin' || Boolean(usuarioLogadoSessao.is_admin);
 
-        const eCriador = Boolean(user.is_creator);
+      usuarios.forEach(user => {
+        const usernameDisplay = sanitizarHtmlDev(user.username || 'user');
+        const nameDisplay = sanitizarHtmlDev(user.display_name || user.nome || usernameDisplay);
+        const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(usernameDisplay)}`;
+        const avatarSrc = (user.avatar_url && user.avatar_url.trim() !== '') ? user.avatar_url : defaultAvatar;
+
+        const eCriadorTarget = Boolean(user.is_creator || user.is_criador);
         const eBanido = Boolean(user.is_banned);
         const eVerificado = Boolean(user.is_verified);
-        const eBot = user.username === 'bot_assistente' || user.role === 'bot';
         const nivelAtual = user.nivel || 1;
 
-        let badges = [];
-        if (eCriador) badges.push(`<span class="badge badge-creator"><i class="fa-solid fa-crown"></i> Criador</span>`);
-        if (eBot) badges.push(`<span class="badge badge-bot"><i class="fa-solid fa-robot"></i> Bot IA</span>`);
-        if (user.role === 'mod') badges.push(`<span class="badge badge-mod"><i class="fa-solid fa-shield"></i> Mod</span>`);
-        if (user.role === 'admin') badges.push(`<span class="badge badge-admin"><i class="fa-solid fa-user-gear"></i> Admin</span>`);
-        if (eVerificado) badges.push(`<span class="badge badge-verified"><i class="fa-solid fa-circle-check"></i> Verificado</span>`);
-        if (eBanido) badges.push(`<span class="badge badge-banned"><i class="fa-solid fa-ban"></i> Banido</span>`);
-        if (badges.length === 0) badges.push(`<span class="badge badge-user">Membro</span>`);
+        let htmlBadgesOficiais = '';
+        if (typeof window.obterHtmlBadgesUsuario === 'function') {
+          let listaBadges = [];
+          if (user.verificados) {
+            if (Array.isArray(user.verificados)) listaBadges = [...user.verificados];
+            else if (typeof user.verificados === 'string') listaBadges = user.verificados.split(/[,|]/).map(s => s.trim().toLowerCase());
+          }
+          if (eCriadorTarget && !listaBadges.includes('creator')) listaBadges.unshift('creator');
+          if (eVerificado && !listaBadges.includes('verified')) listaBadges.push('verified');
+          htmlBadgesOficiais = window.obterHtmlBadgesUsuario(listaBadges.slice(0, 2));
+        }
 
         tbody.innerHTML += `
-          <tr class="${eCriador ? 'creator-row' : ''} ${eBanido ? 'banned-row' : ''}">
+          <tr class="${eCriadorTarget ? 'creator-row' : ''} ${eBanido ? 'banned-row' : ''}">
             <td>
-              <div style="display: flex; align-items: center; gap: 12px;">
+              <div class="table-user-flex">
                 <div class="avatar-wrapper">
-                  <img src="${avatarSrc}" class="avatar-img ${eCriador ? 'creator-border' : ''}" onerror="this.onerror=null; this.src='${defaultAvatar}';">
+                  <img src="${avatarSrc}" class="avatar-img ${eCriadorTarget ? 'creator-border' : ''}" onerror="this.onerror=null; this.src='${defaultAvatar}';" alt="Avatar">
                 </div>
                 <div class="user-info-cell">
                   <span class="user-name-row">${nameDisplay}</span>
@@ -946,16 +639,21 @@
             </td>
 
             <td>
-              <div style="display:flex; flex-direction:column; gap:2px;">
-                <span class="user-id-sub" style="font-family: monospace;">#${user.id}</span>
-                <span class="badge badge-level"><i class="fa-solid fa-bolt"></i> Nível ${nivelAtual}</span>
+              <div class="table-id-level-flex">
+                <span class="user-id-sub font-mono">#${user.id}</span>
+                <span class="badge badge-level"><i class="fa-solid fa-bolt"></i> Lvl ${nivelAtual}</span>
               </div>
             </td>
 
-            <td><div class="badges-container">${badges.join('')}</div></td>
+            <td>
+              <div class="badges-container">
+                ${htmlBadgesOficiais}
+                ${eBanido ? '<span class="badge badge-banned"><i class="fa-solid fa-ban"></i> Banido</span>' : ''}
+              </div>
+            </td>
 
             <td>
-              <select class="role-select" ${eCriador ? 'disabled' : ''} onchange="alterarCargo(${user.id}, this.value, '${usernameDisplay}')">
+              <select class="role-select" ${eCriadorTarget || !souAdminOuCriador ? 'disabled' : ''} onchange="alterarCargo(${user.id}, this.value, '${usernameDisplay}')">
                 <option value="user" ${user.role === 'user' || !user.role ? 'selected' : ''}>Usuário</option>
                 <option value="mod" ${user.role === 'mod' ? 'selected' : ''}>Moderador</option>
                 <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
@@ -964,29 +662,24 @@
 
             <td>
               <div class="action-group">
-                <!-- Alterar Nível -->
-                <button class="action-btn btn-level" onclick="alterarNivelUsuario(${user.id}, ${nivelAtual}, '${usernameDisplay}')" title="Alterar Nível de XP">
+                <button class="action-btn btn-level" ${!souAdminOuCriador ? 'disabled' : ''} onclick="alterarNivelUsuario(${user.id}, ${nivelAtual}, '${usernameDisplay}')" title="Alterar Nível">
                   <i class="fa-solid fa-bolt"></i> Nível
                 </button>
 
-                <!-- Editar Perfil Completo -->
                 <button class="action-btn btn-edit" onclick="abrirModalEdicaoUsuario(${user.id})" title="Editar perfil completo">
                   <i class="fa-solid fa-pen"></i> Editar
                 </button>
 
-                <!-- Banimento -->
-                <button class="action-btn ${eBanido ? 'btn-unban' : 'btn-ban'}" ${eCriador ? 'disabled' : ''} onclick="alternarBanimento(${user.id}, ${eBanido}, '${usernameDisplay}')">
+                <button class="action-btn ${eBanido ? 'btn-unban' : 'btn-ban'}" ${eCriadorTarget ? 'disabled' : ''} onclick="abrirModalBanimentoOuDesbanir(${user.id}, ${eBanido}, '${usernameDisplay}')">
                   <i class="fa-solid ${eBanido ? 'fa-user-check' : 'fa-user-slash'}"></i> ${eBanido ? 'Desbanir' : 'Banir'}
                 </button>
                 
-                <!-- Selo de Verificado -->
-                <button class="action-btn btn-verify" ${eCriador ? 'disabled' : ''} onclick="alternarVerificado(${user.id}, ${eVerificado}, '${usernameDisplay}')">
+                <button class="action-btn btn-verify" ${eCriadorTarget || !souAdminOuCriador ? 'disabled' : ''} onclick="alternarVerificado(${user.id}, ${eVerificado}, '${usernameDisplay}')">
                   <i class="fa-solid fa-circle-check"></i> ${eVerificado ? 'Desverificar' : 'Verificar'}
                 </button>
 
-                <!-- Reset Mídias Inadequadas -->
-                <button class="action-btn btn-reset-media" ${eCriador ? 'disabled' : ''} onclick="resetarMidiaUsuario(${user.id}, '${usernameDisplay}')" title="Resetar Fotos Inadequadas">
-                  <i class="fa-solid fa-image-portrait"></i> Reset
+                <button class="action-btn btn-reset-media" ${eCriadorTarget ? 'disabled' : ''} onclick="resetarMidiaUsuario(${user.id}, '${usernameDisplay}')" title="Resetar Fotos">
+                  <i class="fa-solid fa-image"></i> Reset
                 </button>
               </div>
             </td>
@@ -995,34 +688,36 @@
       });
     }
 
-    // 4. INSPEÇÃO DE MENSAGENS RECENTES
     async function carregarMensagensDev() {
+      const clientSupabase = obterSupabaseDev();
       const tbody = document.getElementById('dev-msgs-list');
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando mensagens do sistema...</td></tr>`;
+      if (!clientSupabase) return;
 
-      const { data: msgs } = await supabaseClient
+      tbody.innerHTML = `<tr><td colspan="5" class="table-state-msg"><i class="fa-solid fa-spinner fa-spin"></i> Carregando mensagens do sistema...</td></tr>`;
+
+      const { data: msgs } = await clientSupabase
         .from('mensagens')
         .select('*')
         .order('id', { ascending: false })
-        .limit(25);
+        .limit(30);
 
       if (!msgs || msgs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding: 30px;">Nenhuma mensagem encontrada.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="table-state-msg">Nenhuma mensagem registrada recentemente.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = msgs.map(m => {
-        let midiaHtml = m.conteudo || '[Anexo]';
+        let midiaHtml = sanitizarHtmlDev(m.conteudo) || '[Anexo sem texto]';
         if (m.midia_url) {
-          midiaHtml += `<br><a href="${m.midia_url}" target="_blank" style="color: var(--mod-blue); font-size: 0.75rem;"><i class="fa-solid fa-paperclip"></i> Ver Anexo</a>`;
+          midiaHtml += `<br><a href="${m.midia_url}" target="_blank" class="msg-anexo-link"><i class="fa-solid fa-paperclip"></i> Ver Mídia Anexada</a>`;
         }
 
         return `
           <tr>
-            <td><span style="font-family: monospace; color: var(--text-dim);">#${m.id}</span></td>
+            <td><span class="font-mono text-dim">#${m.id}</span></td>
             <td><strong>ID ${m.remetente_id}</strong></td>
-            <td style="max-width: 320px; word-break: break-word;">${m.excluido ? '<em>Mensagem Apagada</em>' : midiaHtml}</td>
-            <td><span style="font-size: 0.75rem; color: var(--text-muted);">${new Date(m.created_at || Date.now()).toLocaleString('pt-BR')}</span></td>
+            <td class="msg-content-cell">${m.excluido ? '<em>Mensagem Apagada</em>' : midiaHtml}</td>
+            <td><span class="msg-time">${new Date(m.created_at || Date.now()).toLocaleString('pt-BR')}</span></td>
             <td>
               <button class="action-btn btn-ban" onclick="deletarMensagemDev(${m.id})"><i class="fa-solid fa-trash"></i> Apagar</button>
             </td>
@@ -1033,18 +728,88 @@
 
     async function deletarMensagemDev(msgId) {
       if (!confirm(`Excluir permanentemente a mensagem #${msgId}?`)) return;
+      const clientSupabase = obterSupabaseDev();
 
-      const { error } = await supabaseClient.from('mensagens').delete().eq('id', msgId);
+      const { error } = await clientSupabase.from('mensagens').delete().eq('id', msgId);
       if (error) {
         mostrarToast("Erro ao excluir mensagem: " + error.message, true);
       } else {
         mostrarToast(`Mensagem #${msgId} removida!`);
         registrarLog('Exclusão de Mensagem', `#${msgId}`);
-        carregarMensagensDev();
       }
     }
 
-    // 5. GESTÃO DE NÍVEL / XP
+    function abrirModalBanimentoOuDesbanir(userId, estaBanido, username) {
+      if (estaBanido) {
+        if (confirm(`Deseja realmente DESBANIR o usuário @${username}?`)) {
+          executarDesbanimento(userId, username);
+        }
+      } else {
+        document.getElementById('ban-user-id').value = userId;
+        document.getElementById('ban-username-holder').value = username;
+        document.getElementById('ban-user-target-name').innerText = `@${username}`;
+        document.getElementById('ban-reason-input').value = '';
+        document.getElementById('modal-ban-reason').style.display = 'flex';
+      }
+    }
+
+    function fecharModalBanimento() {
+      document.getElementById('modal-ban-reason').style.display = 'none';
+    }
+
+    async function executarBanimentoComMotivo() {
+      const userId = document.getElementById('ban-user-id').value;
+      const username = document.getElementById('ban-username-holder').value;
+      const motivoInput = document.getElementById('ban-reason-input').value.trim();
+      const motivoFinal = motivoInput || 'Violação dos termos de uso da comunidade.';
+
+      const clientSupabase = obterSupabaseDev();
+
+      let payload = { is_banned: true, ban_reason: motivoFinal, motivo_ban: motivoFinal };
+
+      let { error } = await clientSupabase.from('usuarios').update(payload).eq('id', userId);
+
+      if (error && error.code === 'PGRST204') {
+        const { error: errFallback } = await clientSupabase
+          .from('usuarios')
+          .update({ is_banned: true })
+          .eq('id', userId);
+        error = errFallback;
+      }
+
+      if (error) {
+        mostrarToast("Erro ao aplicar banimento: " + error.message, true);
+      } else {
+        mostrarToast(`Usuário @${username} foi banido com sucesso!`);
+        registrarLog(`Banimento (Motivo: ${motivoFinal})`, username);
+        fecharModalBanimento();
+      }
+    }
+
+    async function executarDesbanimento(userId, username) {
+      const clientSupabase = obterSupabaseDev();
+
+      let { error } = await clientSupabase
+        .from('usuarios')
+        .update({ is_banned: false, ban_reason: null, motivo_ban: null })
+        .eq('id', userId);
+
+      if (error && error.code === 'PGRST204') {
+        const { error: errFallback } = await clientSupabase
+          .from('usuarios')
+          .update({ is_banned: false })
+          .eq('id', userId);
+        error = errFallback;
+      }
+
+      if (error) {
+        mostrarToast("Erro ao desbanir usuário: " + error.message, true);
+      } else {
+        mostrarToast(`Usuário @${username} foi desbanido!`);
+        registrarLog('Desbanimento de Conta', username);
+      }
+    }
+
     async function alterarNivelUsuario(userId, nivelAtual, username) {
       const novoNivelStr = prompt(`Definir novo nível para @${username}:`, nivelAtual);
       if (novoNivelStr === null) return;
@@ -1055,7 +820,9 @@
         return;
       }
 
-      const { error } = await supabaseClient
+      const clientSupabase = obterSupabaseDev();
+
+      const { error } = await clientSupabase
         .from('usuarios')
         .update({ nivel: novoNivel })
         .eq('id', userId);
@@ -1063,19 +830,17 @@
       if (error) {
         mostrarToast("Erro ao atualizar nível: " + error.message, true);
       } else {
-        mostrarToast(`Nível de @${username} alterado para ${novoNivel}!`);
-        registrarLog(`Alteração de Nível para Lvl ${novoNivel}`, username);
-        carregarTudoDev();
+        mostrarToast(`Nível de @${username} alterado para Lvl ${novoNivel}!`);
+        registrarLog(`Nível alterado para Lvl ${novoNivel}`, username);
       }
     }
 
-    // 6. EDITOR MODAL DE PERFIL DE USUÁRIO
     function abrirModalEdicaoUsuario(userId) {
       const user = listaUsuariosCache.find(u => u.id === userId);
       if (!user) return;
 
       document.getElementById('edit-user-id').value = user.id;
-      document.getElementById('edit-display-name').value = user.display_name || '';
+      document.getElementById('edit-display-name').value = user.display_name || user.nome || '';
       document.getElementById('edit-username').value = user.username || '';
       document.getElementById('edit-sobre').value = user.sobre || '';
       document.getElementById('edit-verificados').value = user.verificados || '';
@@ -1101,7 +866,9 @@
         return;
       }
 
-      const { error } = await supabaseClient
+      const clientSupabase = obterSupabaseDev();
+
+      const { error } = await clientSupabase
         .from('usuarios')
         .update({
           display_name: displayName,
@@ -1118,31 +885,13 @@
         mostrarToast(`Perfil de @${username} atualizado com sucesso!`);
         registrarLog('Edição de Perfil Completo', username);
         fecharModalEdicao();
-        carregarTudoDev();
-      }
-    }
-
-    // 7. DEMAIS AÇÕES DE MODERAÇÃO
-    async function alternarBanimento(userId, estadoAtual, username) {
-      const acao = estadoAtual ? 'DESBANIR' : 'BANIR';
-      if (!confirm(`Deseja realmente ${acao} o usuário @${username}?`)) return;
-
-      const { error } = await supabaseClient
-        .from('usuarios')
-        .update({ is_banned: !estadoAtual })
-        .eq('id', userId);
-
-      if (error) {
-        mostrarToast("Erro ao atualizar banimento: " + error.message, true);
-      } else {
-        mostrarToast(`Usuário @${username} ${estadoAtual ? 'desbanido' : 'banido'}!`);
-        registrarLog(estadoAtual ? 'Desbanimento' : 'Banimento', username);
-        carregarTudoDev();
       }
     }
 
     async function alternarVerificado(userId, estadoAtual, username) {
-      const { error } = await supabaseClient
+      const clientSupabase = obterSupabaseDev();
+
+      const { error } = await clientSupabase
         .from('usuarios')
         .update({ is_verified: !estadoAtual })
         .eq('id', userId);
@@ -1152,7 +901,6 @@
       } else {
         mostrarToast(`Status de verificação de @${username} alterado!`);
         registrarLog('Selo de Verificado Alterado', username);
-        carregarTudoDev();
       }
     }
 
@@ -1162,7 +910,9 @@
         return;
       }
 
-      const { error } = await supabaseClient
+      const clientSupabase = obterSupabaseDev();
+
+      const { error } = await clientSupabase
         .from('usuarios')
         .update({ role: novoCargo })
         .eq('id', userId);
@@ -1172,7 +922,6 @@
       } else {
         mostrarToast(`Cargo de @${username} alterado para ${novoCargo.toUpperCase()}!`);
         registrarLog(`Alteração de Cargo para ${novoCargo.toUpperCase()}`, username);
-        carregarTudoDev();
       }
     }
 
@@ -1180,12 +929,14 @@
       if (!confirm(`Remover fotos do perfil de @${username} por mídias inadequadas?`)) return;
 
       const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(username)}`;
+      const clientSupabase = obterSupabaseDev();
 
-      const { error } = await supabaseClient
+      const { error } = await clientSupabase
         .from('usuarios')
         .update({
           avatar_url: defaultAvatar,
           banner_url: '',
+          moldura_url: '',
           custom_status: '⚠️ Perfil resetado por violação de conteúdo'
         })
         .eq('id', userId);
@@ -1193,13 +944,11 @@
       if (error) {
         mostrarToast("Erro ao resetar mídias: " + error.message, true);
       } else {
-        mostrarToast(`Mídias de @${username} foram resetadas com sucesso!`);
+        mostrarToast(`Mídias de @${username} foram resetadas!`);
         registrarLog('Reset de Mídias e Fotos', username);
-        carregarTudoDev();
       }
     }
 
-    // Inicialização ao carregar a página
     document.addEventListener('DOMContentLoaded', carregarTudoDev);
   </script>
 </body>

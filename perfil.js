@@ -1,6 +1,6 @@
 // ==========================================================================
-// MÓDULO DE PERFIL DE USUÁRIO (perfil.js) - PROJECT Z ENHANCED v5.1
-// Integrado com status.js (int8), Pilha de Navegação, Realtime & Social
+// MÓDULO DE PERFIL DE USUÁRIO (perfil.js) - SPHERE v5.2 PRO
+// Integrado com status.js, verificados.js, Realtime, Social & Modal System
 // ==========================================================================
 
 (function () {
@@ -29,7 +29,7 @@
     const toast = document.createElement('div');
     toast.id = 'perfil-toast-msg';
     toast.className = `perfil-toast-message perfil-toast-${tipo}`;
-    toast.innerHTML = `<span>${mensagem}</span>`;
+    toast.innerHTML = `<i class="fa-solid ${tipo === 'sucesso' ? 'fa-circle-check' : 'fa-circle-info'}"></i> <span>${mensagem}</span>`;
     document.body.appendChild(toast);
 
     setTimeout(() => {
@@ -115,15 +115,39 @@
     }
   }
 
-  function renderizarBadgesVerificados(verificadosStr) {
-    if (!verificadosStr) return '';
-    const itens = String(verificadosStr).split('|').map(s => s.trim()).filter(Boolean);
-    if (itens.length === 0) return '';
+  // Integrado exclusivamente ao módulo verificados.js (v5.2)
+  function renderizarBadgesVerificados(usuario) {
+    if (!usuario) return '';
+
+    let listaBadges = [];
+    if (usuario.verificados) {
+      if (Array.isArray(usuario.verificados)) {
+        listaBadges = [...usuario.verificados];
+      } else if (typeof usuario.verificados === 'string') {
+        listaBadges = usuario.verificados.split(/[,|]/).map(s => s.trim().toLowerCase());
+      }
+    }
+
+    if ((usuario.is_creator || usuario.is_criador) && !listaBadges.includes('creator')) {
+      listaBadges.unshift('creator');
+    }
+
+    if (usuario.is_verified && !listaBadges.includes('verified')) {
+      listaBadges.push('verified');
+    }
+
+    if (listaBadges.length === 0) return '';
+
+    if (typeof window.obterHtmlBadgesUsuario === 'function') {
+      return window.obterHtmlBadgesUsuario(listaBadges);
+    }
 
     return `
-      <div class="perfil-badges-wrapper">
-        ${itens.map(item => `
-          <span class="perfil-badge-item"><i class="fa-solid fa-circle-check"></i> ${sanitizarHtmlPerfil(item)}</span>
+      <div class="chat-badge-container">
+        ${listaBadges.map(item => `
+          <span class="chat-badge-icon badge-verified" title="${sanitizarHtmlPerfil(item)}">
+            <i class="fa-solid fa-circle-check"></i>
+          </span>
         `).join('')}
       </div>
     `;
@@ -131,7 +155,7 @@
 
   function renderizarTagsPerfil(tagsStr) {
     if (!tagsStr) return '';
-    const tags = String(tagsStr).split('|').map(t => t.trim()).filter(Boolean);
+    const tags = String(tagsStr).split(/[,|]/).map(t => t.trim()).filter(Boolean);
     if (tags.length === 0) return '';
 
     return `
@@ -151,13 +175,6 @@
     return mapa[(status || '').toLowerCase()] || mapa.offline;
   }
 
-  function renderizarBadgeCargo(usuario) {
-    if (usuario.is_creator || usuario.is_criador) return `<span class="user-role-badge role-creator" title="Criador da Comunidade"><i class="fa-solid fa-wand-magic-sparkles"></i> Creator</span>`;
-    if (usuario.is_admin || usuario.role === 'admin') return `<span class="user-role-badge role-admin" title="Administrador da Plataforma"><i class="fa-solid fa-crown"></i> Admin</span>`;
-    if (usuario.role === 'mod' || usuario.is_mod) return `<span class="user-role-badge role-mod" title="Moderador"><i class="fa-solid fa-shield-halved"></i> Mod</span>`;
-    return '';
-  }
-
   function copiarParaAreaTransferencia(texto, rotulo) {
     if (!navigator.clipboard) {
       mostrarToastPerfil(`Cópia manual: ${texto}`, 'info');
@@ -170,6 +187,36 @@
     });
   }
 
+  // Modal para exibir o recado completo do usuário ao clicar
+  function abrirModalRecadoCompleto(emoji, textoRecado) {
+    const antigo = document.getElementById('perfil-recado-modal');
+    if (antigo) antigo.remove();
+
+    const emojiHtml = emoji ? `<span class="recado-emoji-large">${emoji}</span>` : '';
+    const textoHtml = textoRecado ? `<p>${sanitizarHtmlPerfil(textoRecado)}</p>` : '<p class="perfil-bio-empty">Sem texto no recado.</p>';
+
+    const modal = document.createElement('div');
+    modal.id = 'perfil-recado-modal';
+    modal.className = 'perfil-modal-recado-overlay';
+    modal.innerHTML = `
+      <div class="perfil-modal-recado-card">
+        <div class="perfil-modal-recado-header">
+          ${emojiHtml}
+          <button class="btn-fechar-recado" onclick="this.closest('#perfil-recado-modal').remove()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="perfil-modal-recado-body">
+          ${textoHtml}
+        </div>
+      </div>
+    `;
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+
+    document.body.appendChild(modal);
+  }
+
   async function compartilharPerfil(usuario) {
     if (!usuario) return;
 
@@ -179,8 +226,8 @@
     const shareUrl = `${baseUrl}?user=${encodeURIComponent(usernameStr)}`;
 
     const dadosShare = {
-      title: `Perfil de ${nomeStr} - Project Z`,
-      text: `Confira o perfil de @${usernameStr} no Project Z!`,
+      title: `Perfil de ${nomeStr} - Sphere`,
+      text: `Confira o perfil de @${usernameStr} no Sphere!`,
       url: shareUrl
     };
 
@@ -223,7 +270,7 @@
   }
 
   // ========================================================================
-  // LÓGICA DE ABERTURA E RENDERIZAÇÃO DO PERFIL (Com Pilha de Histórico)
+  // LÓGICA DE ABERTURA E RENDERIZAÇÃO DO PERFIL
   // ========================================================================
   
   async function abrirPerfil(usuarioInput, ehVoltar = false) {
@@ -251,7 +298,6 @@
 
     cancelarInscricaoRealtimePerfil();
 
-    // Limpa a instância atual do DOM sem zerar a pilha de histórico
     const containerExistente = document.getElementById('perfil-full-container');
     if (containerExistente) containerExistente.remove();
 
@@ -312,7 +358,7 @@
     const tempoDeContaTexto = calcularTempoDeConta(user);
     const statusObj = obterLabelStatus(user.status || 'offline');
 
-    // Injeção reativa do indicador de presença com o ID int8 do usuário
+    // Indicador de presença
     let htmlStatusDot = '';
     if (typeof window.obterHtmlStatusDot === 'function') {
       const dotInner = window.obterHtmlStatusDot(user.status || 'offline', user.id);
@@ -321,31 +367,42 @@
       htmlStatusDot = `<div class="avatar-status-badge"><span class="status-dot offline" data-user-status-id="${user.id}"></span></div>`;
     }
 
-    const emojiStatus = user.status_emoji || '💬';
-    const customStatusHtml = user.custom_status
-      ? `<div class="perfil-custom-status" title="Recado Atual">
-           <span class="custom-status-emoji">${emojiStatus}</span>
-           <span class="custom-status-text">${sanitizarHtmlPerfil(user.custom_status)}</span>
-         </div>`
-      : '';
+    // Tratamento Inteligente do Recado (Emoji apenas, Texto apenas, Ambos ou Nada)
+    const emojiStatus = user.status_emoji ? user.status_emoji.trim() : '';
+    const textoRecado = user.custom_status ? user.custom_status.trim() : '';
 
-    const htmlVerificados = renderizarBadgesVerificados(user.verificados);
+    let customStatusHtml = '';
+    if (emojiStatus || textoRecado) {
+      const emojiSpan = emojiStatus ? `<span class="custom-status-emoji">${emojiStatus}</span>` : '';
+      const textoSpan = textoRecado ? `<span class="custom-status-text">${sanitizarHtmlPerfil(textoRecado)}</span>` : '';
+
+      customStatusHtml = `
+        <div class="perfil-custom-status-banner" title="Clique para ver o recado completo" onclick="window.abrirModalRecadoCompleto('${emojiStatus}', '${sanitizarHtmlPerfil(textoRecado)}')">
+          ${emojiSpan}
+          ${textoSpan}
+        </div>`;
+    }
+
+    const htmlVerificados = renderizarBadgesVerificados(user);
     const htmlTags = renderizarTagsPerfil(user.tags);
-    const htmlBadgeCargo = renderizarBadgeCargo(user);
 
     const sobreMimTexto = (user.sobre && user.sobre.trim() !== '')
       ? sanitizarHtmlPerfil(user.sobre)
       : '<span class="perfil-bio-empty">Nenhuma biografia adicionada ainda.</span>';
 
-    // Ações Rápidas de Banner
-    let botoesAcaoBanner = '';
+    // Botão de Editar Perfil (Apenas no Banner para o próprio usuário) - 32px
+    let botaoBannerAcao = '';
     if (ehMeuPerfil) {
-      botoesAcaoBanner = `
+      botaoBannerAcao = `
         <button class="btn-editar-banner" onclick="if(typeof window.abrirModalEditarPerfil === 'function') window.abrirModalEditarPerfil();">
           <i class="fa-solid fa-pen-to-square"></i> Editar Perfil
         </button>`;
-    } else {
-      botoesAcaoBanner = `
+    }
+
+    // Botões de Ações Sociais (Posicionados ABAIXO do Perfil) - 32px
+    let htmlAcoesSociaisAbaixo = '';
+    if (!ehMeuPerfil) {
+      htmlAcoesSociaisAbaixo = `
         <div class="perfil-social-actions-group">
           <button id="btn-perfil-mensagem" class="btn-perfil-action highlight" onclick="window.enviarMensagemParaUsuario(window._perfilUsuarioCache)">
             <i class="fa-solid fa-paper-plane"></i> Mensagem
@@ -359,26 +416,24 @@
         </div>`;
     }
 
-    // Regra do Botão de Ação Superior (Voltar vs Fechar vs Omissão)
+    // Botão de Voltar / Fechar - 32px
     const temHistorico = historicoPerfis.length > 0;
     let botaoVoltarOuFechar = '';
 
     if (ehMeuPerfil) {
       if (temHistorico) {
         botaoVoltarOuFechar = `
-          <button class="btn-fechar-perfil" onclick="window.voltarOuFecharPerfil()" title="Voltar para o perfil anterior">
+          <button class="btn-fechar-perfil" onclick="window.voltarOuFecharPerfil()" title="Voltar ao perfil anterior">
             <i class="fa-solid fa-arrow-left"></i>
-          </button>
-        `;
+          </button>`;
       }
     } else {
       const iconeBotaoTop = temHistorico ? 'fa-arrow-left' : 'fa-xmark';
-      const titleBotaoTop = temHistorico ? 'Voltar para o perfil anterior' : 'Fechar Perfil (ESC)';
+      const titleBotaoTop = temHistorico ? 'Voltar para o perfil anterior' : 'Fechar Perfil';
       botaoVoltarOuFechar = `
         <button class="btn-fechar-perfil" onclick="window.voltarOuFecharPerfil()" title="${titleBotaoTop}">
           <i class="fa-solid ${iconeBotaoTop}"></i>
-        </button>
-      `;
+        </button>`;
     }
 
     const container = document.createElement('div');
@@ -389,10 +444,11 @@
       <div class="perfil-content-wrapper" onclick="event.stopPropagation();">
         ${botaoVoltarOuFechar}
 
-        <!-- Banner de Capa -->
+        <!-- Banner Arqueado/Curvado -->
         <div class="perfil-banner" style="${bannerStyle}">
           <div class="perfil-banner-overlay"></div>
-          ${botoesAcaoBanner}
+          ${customStatusHtml}
+          ${botaoBannerAcao}
         </div>
         
         <!-- Cabeçalho Principal -->
@@ -408,21 +464,17 @@
           <div class="perfil-names-container">
             <div class="perfil-display-row">
               <span class="perfil-display-name">${sanitizarHtmlPerfil(nomeExibicao)}</span>
-              ${user.is_verified ? '<i class="fa-solid fa-circle-check perfil-verified-icon" title="Conta Verificada"></i>' : ''}
-              ${htmlBadgeCargo}
+              ${htmlVerificados}
             </div>
             
             <div class="perfil-handle-row">
-              <span class="perfil-handle-username" onclick="window.copiarHandleUsuario('@${sanitizarHtmlPerfil(user.username || 'usuario')}')" title="Clique para copiar">
+              <span class="perfil-handle-username" onclick="window.copiarHandleUsuario('@${sanitizarHtmlPerfil(user.username || 'usuario')}')" title="Clique para copiar @username">
                 @${sanitizarHtmlPerfil(user.username || 'usuario')} <i class="fa-regular fa-copy copy-icon"></i>
               </span>
               <button class="btn-compartilhar-perfil" onclick="window.compartilharPerfil(window._perfilUsuarioCache)" title="Compartilhar Perfil">
-                <i class="fa-solid fa-share-nodes"></i> Compartilhar
+                <i class="fa-solid fa-share-nodes"></i>
               </button>
             </div>
-
-            ${customStatusHtml}
-            ${htmlVerificados}
           </div>
 
           <!-- Metadados de Perfil -->
@@ -449,12 +501,10 @@
               <span class="stat-value" id="perfil-total-amigos">${formatarNumeroMetrica(user.total_amigos)}</span>
               <span class="stat-label">Amigos</span>
             </div>
-            <div class="stat-divider"></div>
             <div class="stat-item" onclick="if(typeof window.abrirListaSocial === 'function') window.abrirListaSocial(${idAlvoNum}, 'seguindo')">
               <span class="stat-value" id="perfil-total-seguindo">${formatarNumeroMetrica(user.total_seguindo)}</span>
               <span class="stat-label">Seguindo</span>
             </div>
-            <div class="stat-divider"></div>
             <div class="stat-item" onclick="if(typeof window.abrirListaSocial === 'function') window.abrirListaSocial(${idAlvoNum}, 'seguidores')">
               <span class="stat-value" id="perfil-total-seguidores">${formatarNumeroMetrica(user.total_seguidores)}</span>
               <span class="stat-label">Seguidores</span>
@@ -464,29 +514,30 @@
           <!-- Tags de Perfil -->
           ${htmlTags}
 
-          <!-- Seção Biografia -->
+          <!-- Biografia / Sobre mim -->
           <div class="perfil-bio-section">
             <div class="perfil-bio-title">
               <i class="fa-solid fa-align-left"></i> Sobre mim
             </div>
             <div class="perfil-bio-text">${sobreMimTexto}</div>
           </div>
+
+          <!-- Botões de Ação Social (Mensagem, Seguir, Adicionar Amigo) -->
+          ${htmlAcoesSociaisAbaixo}
+
         </div>
       </div>
     `;
 
-    // Clicar fora do card executa a rotina de voltar/fechar
     container.addEventListener('click', voltarOuFecharPerfil);
     document.body.appendChild(container);
 
-    // Registra listener de teclado para ESC
     document.removeEventListener('keydown', tratarEscPerfil);
     document.addEventListener('keydown', tratarEscPerfil);
 
     await carregarMetricasESocialPerfil(idAlvoNum, ehMeuPerfil);
   }
 
-  // Decisão de Navegação: Volta para o perfil anterior ou fecha
   function voltarOuFecharPerfil() {
     cancelarInscricaoRealtimePerfil();
 
@@ -503,7 +554,6 @@
       const meuId = obterMeuIdLogado();
       const idCache = window._perfilUsuarioCache ? Number(window._perfilUsuarioCache.id) : null;
       
-      // Bloqueia tecla ESC no perfil próprio quando não houver pilha de histórico
       if (meuId !== null && meuId === idCache && historicoPerfis.length === 0) {
         return;
       }
@@ -526,7 +576,7 @@
   }
 
   // ========================================================================
-  // ROTINAS SOCIAIS (Carregamento de Métricas e Botões)
+  // CARREGAMENTO DE MÉTRICAS SOCIAIS
   // ========================================================================
 
   async function carregarMetricasESocialPerfil(idAlvo, ehMeuPerfil) {
@@ -607,7 +657,7 @@
     if (btn) btn.disabled = false;
   }
 
-  // Deeplink via URL (?user=@username ou ?id=123)
+  // Deeplink via URL
   async function verificarDeeplinkPerfilURL() {
     const params = new URLSearchParams(window.location.search);
     const targetUser = params.get('user');
@@ -645,6 +695,7 @@
   window.fecharPerfil = fecharPerfilResetandoHistorico;
   window.voltarOuFecharPerfil = voltarOuFecharPerfil;
   window.compartilharPerfil = compartilharPerfil;
+  window.abrirModalRecadoCompleto = abrirModalRecadoCompleto;
   window.executarAcaoSeguir = executarAcaoSeguir;
   window.executarAcaoAmizade = executarAcaoAmizade;
   window.enviarMensagemParaUsuario = enviarMensagemParaUsuario;

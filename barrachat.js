@@ -1,6 +1,6 @@
 // ==========================================================================
-// BARRACAT MODULE (barrachat.js) - ADVANCED MEDIA, AUDIO RECORDER & @MENTION
-// Project Z v5.0 | Supabase Storage Integration, Smart Drafts & Mention Search
+// BARRACAT MODULE (barrachat.js) - ADVANCED MEDIA, AUDIO RECORDER & MULTILINE
+// Project Z v5.2 | Multi-line Support, Micro-Animations & Dynamic Discord Style
 // ==========================================================================
 
 let anexosListDataUrl = [];
@@ -18,133 +18,136 @@ function obterSupabaseBarraChat() {
   return window.supabaseClient || window.supabase || window.sb || null;
 }
 
-// CSS Otimizado com Injeção Dinâmica
+// CSS Otimizado com Animações e Glassmorphism
 (function injetarCssBorraChat() {
-  if (document.getElementById('borrachat-css')) return;
+  if (document.getElementById('borrachat-css-v52')) return;
   const style = document.createElement('style');
-  style.id = 'borrachat-css';
+  style.id = 'borrachat-css-v52';
   style.textContent = `
+    /* Keyframes de Animações */
+    @keyframes pzPopIn {
+      0% { transform: scale(0.8); opacity: 0; }
+      70% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes pzMicPulse {
+      0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.6); }
+      70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+    }
+
+    @keyframes pzGlowFocus {
+      0% { border-color: rgba(255, 45, 85, 0.3); }
+      50% { border-color: rgba(255, 45, 85, 0.7); box-shadow: 0 0 16px rgba(255, 45, 85, 0.25); }
+      100% { border-color: rgba(255, 45, 85, 0.3); }
+    }
+
     .chat-input-container {
-      padding: 8px 12px;
-      background: var(--chat-header-bg, #160d19);
-      border-top: 1px solid rgba(255, 45, 85, 0.2);
+      padding: 10px 14px;
+      background: var(--chat-header-bg, #110714);
+      border-top: 1px solid rgba(255, 45, 85, 0.15);
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
       position: relative;
       box-sizing: border-box;
-      transition: background 0.2s ease, border-color 0.2s ease;
+      transition: all 0.25s ease;
     }
 
     .chat-input-container.drag-over {
-      background: rgba(255, 45, 85, 0.15) !important;
+      background: rgba(255, 45, 85, 0.12) !important;
       border-top-color: var(--chat-accent, #ff2d55) !important;
     }
 
-    /* Linha Superior: Botões (+) e Enviar/Cancelar */
-    .chat-controls-top-row {
+    /* Card Estrutural Estilo Discord / Project Z */
+    .chat-card-wrapper {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      align-items: flex-end;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 20px;
+      padding: 6px 10px;
       width: 100%;
+      box-sizing: border-box;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .chat-controls-left,
-    .chat-controls-right {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    .chat-card-wrapper:focus-within {
+      border-color: rgba(255, 45, 85, 0.55);
+      background: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 0 18px rgba(255, 45, 85, 0.22);
     }
 
-    /* Botões Circulares Compactos */
-    .btn-barrachat-icon {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+    /* Botões Circulares Padronizados em EXATOS 32px */
+    .btn-barrachat-32 {
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px !important;
+      max-width: 32px !important;
+      min-height: 32px !important;
+      max-height: 32px !important;
+      border-radius: 50% !important;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       color: #d1c4d6;
-      width: 32px;
-      height: 32px;
-      min-width: 32px;
-      max-width: 32px;
-      border-radius: 50%;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.85rem;
-      transition: all 0.2s ease;
-      padding: 0;
+      font-size: 0.88rem;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      padding: 0 !important;
       flex-shrink: 0;
+      outline: none !important;
+      box-shadow: none !important;
+      box-sizing: border-box;
+      margin-bottom: 1px;
     }
 
-    .btn-barrachat-icon:hover:not(:disabled) {
+    .btn-barrachat-32:hover:not(:disabled) {
       background: var(--chat-accent, #ff2d55);
       color: #ffffff;
       border-color: var(--chat-accent, #ff2d55);
-      transform: scale(1.05);
+      transform: scale(1.1);
+      box-shadow: 0 0 12px rgba(255, 45, 85, 0.45);
     }
 
-    .btn-barrachat-icon:disabled {
+    .btn-barrachat-32:disabled {
       opacity: 0.3;
       cursor: not-allowed;
       transform: none;
-    }
-
-    .btn-barrachat-icon.danger {
-      color: #ff4757;
-      border-color: rgba(255, 71, 87, 0.3);
-      background: rgba(255, 71, 87, 0.15);
-    }
-
-    .btn-barrachat-icon.danger:hover:not(:disabled) {
-      background: #ff4757;
-      color: #ffffff;
-      border-color: #ff4757;
-    }
-
-    .chat-btn-send-top {
-      background: var(--chat-accent, #ff2d55);
-      border: none;
-      color: #ffffff;
-      padding: 6px 14px;
-      border-radius: 18px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      box-shadow: 0 2px 8px rgba(255, 45, 85, 0.3);
-      transition: all 0.2s ease;
-    }
-
-    .chat-btn-send-top:hover:not(:disabled) {
-      background: #e02648;
-      transform: translateY(-1px);
-    }
-
-    .chat-btn-send-top:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
       box-shadow: none;
     }
 
-    /* Input Multilinha Flexível */
-    .chat-input-row-full {
-      display: flex;
-      align-items: center;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 14px;
-      padding: 6px 10px;
-      width: 100%;
-      box-sizing: border-box;
-      transition: border-color 0.2s ease;
+    .btn-barrachat-32.danger {
+      color: #ff4757;
+      border-color: rgba(255, 71, 87, 0.3);
+      background: rgba(255, 71, 87, 0.12);
     }
 
-    .chat-input-row-full:focus-within {
-      border-color: rgba(255, 45, 85, 0.6);
+    .btn-barrachat-32.danger:hover:not(:disabled) {
+      background: #ff4757;
+      color: #ffffff;
+      border-color: #ff4757;
+      box-shadow: 0 0 12px rgba(255, 71, 87, 0.45);
     }
 
+    .btn-barrachat-32.send-active {
+      background: linear-gradient(135deg, #ff2d55 0%, #d81b43 100%);
+      border: none;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(255, 45, 85, 0.4);
+      animation: pzPopIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .btn-barrachat-32.send-active:hover:not(:disabled) {
+      background: linear-gradient(135deg, #ff4369 0%, #ff2d55 100%);
+      transform: scale(1.12);
+    }
+
+    /* Textarea Multilinha Inteligente */
     .chat-input-text {
       flex: 1;
       background: transparent !important;
@@ -152,29 +155,48 @@ function obterSupabaseBarraChat() {
       outline: none !important;
       box-shadow: none !important;
       color: #ffffff;
-      font-size: 0.88rem;
+      font-size: 0.92rem;
+      font-weight: 500;
       font-family: inherit;
-      padding: 0;
+      padding: 5px 4px;
       margin: 0;
       width: 100%;
       resize: none;
-      height: 22px;
-      max-height: 110px;
-      line-height: 1.35;
+      height: 26px;
+      min-height: 26px;
+      max-height: 160px;
+      line-height: 1.45;
       overflow-y: auto;
       display: block;
+      box-sizing: border-box;
+      white-space: pre-wrap;
+      word-wrap: break-word;
     }
 
     .chat-input-text::-webkit-scrollbar {
-      width: 4px;
+      width: 5px;
     }
     .chat-input-text::-webkit-scrollbar-thumb {
-      background: rgba(255, 45, 85, 0.3);
+      background: rgba(255, 45, 85, 0.4);
       border-radius: 4px;
     }
 
     .chat-input-text::placeholder {
-      color: #8e7f96;
+      color: #8c7e94;
+      font-weight: 500;
+    }
+
+    /* Barra de Preview de Resposta/Edição */
+    .chat-input-reply-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 45, 85, 0.1);
+      border-left: 3px solid var(--chat-accent, #ff2d55);
+      padding: 6px 12px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      animation: pzPopIn 0.2s ease-out;
     }
 
     /* Barra de Gravação de Áudio */
@@ -184,10 +206,11 @@ function obterSupabaseBarraChat() {
       justify-content: space-between;
       background: rgba(255, 45, 85, 0.12);
       border: 1px solid rgba(255, 45, 85, 0.4);
-      border-radius: 14px;
+      border-radius: 20px;
       padding: 6px 12px;
       width: 100%;
       box-sizing: border-box;
+      animation: pzPopIn 0.2s ease-out;
     }
 
     .chat-audio-recording-indicator {
@@ -196,89 +219,79 @@ function obterSupabaseBarraChat() {
       gap: 10px;
       color: #ff4757;
       font-weight: 800;
-      font-size: 0.82rem;
+      font-size: 0.85rem;
     }
 
     .chat-audio-rec-dot {
-      width: 8px;
-      height: 8px;
+      width: 12px;
+      height: 12px;
       background: #ff4757;
       border-radius: 50%;
-      animation: blinkRec 1s infinite;
-      box-shadow: 0 0 8px #ff4757;
+      animation: pzMicPulse 1.2s infinite;
     }
 
-    @keyframes blinkRec {
-      0% { opacity: 1; }
-      50% { opacity: 0.2; }
-      100% { opacity: 1; }
-    }
-
-    .chat-audio-actions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    /* Menu Flutuante de Sugestão de Menção (@) */
+    /* Sugestão de Menção (@) */
     .chat-mention-suggestions-box {
       position: absolute;
-      bottom: calc(100% + 4px);
-      left: 12px;
-      background: #180c1b;
+      bottom: calc(100% + 8px);
+      left: 14px;
+      background: #180b1b;
       border: 1px solid rgba(255, 45, 85, 0.35);
-      border-radius: 12px;
+      border-radius: 16px;
       padding: 6px;
       display: flex;
       flex-direction: column;
       gap: 4px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.85);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
       z-index: 100;
-      max-width: 280px;
-      max-height: 180px;
+      max-width: 290px;
+      max-height: 190px;
       overflow-y: auto;
+      animation: pzPopIn 0.2s ease-out;
     }
 
     .chat-mention-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      border-radius: 8px;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 10px;
       cursor: pointer;
       color: #ffffff;
-      font-size: 0.8rem;
+      font-size: 0.82rem;
+      font-weight: 600;
       transition: background 0.15s;
     }
 
     .chat-mention-item:hover {
-      background: rgba(255, 45, 85, 0.2);
+      background: rgba(255, 45, 85, 0.22);
     }
 
     .chat-mention-avatar {
-      width: 22px;
-      height: 22px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       object-fit: cover;
     }
 
-    /* Mídias em Anexo */
+    /* Previews de Mídia Anexada */
     .chat-attachment-preview-box {
       display: flex;
       gap: 8px;
       overflow-x: auto;
-      padding: 6px;
-      background: rgba(0, 0, 0, 0.5);
-      border-radius: 10px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 14px;
       border: 1px solid rgba(255, 45, 85, 0.3);
+      animation: pzPopIn 0.2s ease-out;
     }
 
     .chat-preview-item {
       position: relative;
-      width: 52px;
-      height: 52px;
+      width: 58px;
+      height: 58px;
       flex-shrink: 0;
-      border-radius: 8px;
+      border-radius: 12px;
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.15);
       background: #0d0610;
@@ -292,15 +305,15 @@ function obterSupabaseBarraChat() {
 
     .btn-remove-attachment {
       position: absolute;
-      top: 2px;
-      right: 2px;
+      top: 3px;
+      right: 3px;
       background: rgba(0, 0, 0, 0.85);
       color: #ff4757;
       border: none;
       border-radius: 50%;
-      width: 18px;
-      height: 18px;
-      font-size: 0.65rem;
+      width: 20px;
+      height: 20px;
+      font-size: 0.7rem;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -310,20 +323,25 @@ function obterSupabaseBarraChat() {
 
     .btn-toggle-media-spoiler {
       position: absolute;
-      bottom: 2px;
-      left: 2px;
+      bottom: 3px;
+      left: 3px;
       background: rgba(0, 0, 0, 0.85);
       color: #ffffff;
       border: none;
       border-radius: 4px;
-      padding: 2px 4px;
-      font-size: 0.6rem;
+      padding: 2px 5px;
+      font-size: 0.65rem;
       cursor: pointer;
       z-index: 2;
     }
 
     .btn-toggle-media-spoiler.active {
       color: var(--chat-accent, #ff2d55);
+    }
+
+    @media (max-width: 480px) {
+      .chat-input-container { padding: 8px 10px; }
+      .chat-card-wrapper { padding: 5px 8px; }
     }
   `;
   document.head.appendChild(style);
@@ -334,47 +352,48 @@ function renderizarBarraChat() {
   if (!container) return;
 
   container.innerHTML = `
+    <!-- Barra de Contexto/Preview (Resposta ou Edição) -->
+    <div id="chat-input-reply-bar" class="chat-input-reply-bar"></div>
+
     <!-- Menu de Autocomplete de Menções (@) -->
     <div id="chat-mention-suggestions" class="chat-mention-suggestions-box" style="display: none;"></div>
 
-    <!-- Controles do Topo -->
-    <div class="chat-controls-top-row">
-      <div class="chat-controls-left">
-        <button class="btn-barrachat-icon" id="btn-chat-plus" onclick="abrirGaleriaDirecta()" title="Enviar Anexo" disabled>
-          <i class="fa-solid fa-plus"></i>
-        </button>
-        <button class="btn-barrachat-icon" id="btn-chat-mic" onclick="iniciarGravacaoAudio()" title="Gravar Áudio" disabled>
-          <i class="fa-solid fa-microphone"></i>
-        </button>
-      </div>
-      
-      <div class="chat-controls-right">
-        <button id="btn-cancel-chat" class="btn-barrachat-icon danger" onclick="cancelarAcaoChat()" title="Cancelar" style="display: none;">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-        
-        <button id="btn-send-chat" class="chat-btn-send-top" onclick="enviarMensagemChat()" disabled title="Enviar">
-          <i class="fa-solid fa-paper-plane"></i> Enviar
-        </button>
-      </div>
-    </div>
+    <!-- Previews de Mídia Anexada -->
+    <div id="chat-attachment-preview-box" class="chat-attachment-preview-box" style="display: none;"></div>
 
-    <!-- Barra de Gravação de Áudio (Oculta por Padrão) -->
+    <!-- Barra de Gravação de Áudio Oculta -->
     <div id="chat-audio-recording-bar" class="chat-audio-recording-bar" style="display: none;">
       <div class="chat-audio-recording-indicator">
         <div class="chat-audio-rec-dot"></div>
         <span id="chat-audio-rec-timer">Gravando: 00:00</span>
       </div>
-      <div class="chat-audio-actions">
-        <button class="btn-barrachat-icon danger" onclick="cancelarGravacaoAudio()" title="Descartar"><i class="fa-solid fa-trash"></i></button>
-        <button class="chat-btn-send-top" onclick="finalizarEEnviarAudio()"><i class="fa-solid fa-paper-plane"></i> Enviar</button>
+      <div style="display:flex; gap:6px;">
+        <button class="btn-barrachat-32 danger" onclick="cancelarGravacaoAudio()" title="Descartar"><i class="fa-solid fa-trash"></i></button>
+        <button class="btn-barrachat-32 send-active" onclick="finalizarEEnviarAudio()" title="Enviar Áudio"><i class="fa-solid fa-paper-plane"></i></button>
       </div>
     </div>
 
-    <!-- Campo de Digitação Textarea -->
-    <div class="chat-input-row-full" id="chat-input-row-dropzone">
+    <!-- Card Principal -->
+    <div class="chat-card-wrapper" id="chat-input-row-dropzone">
       <input type="file" id="chat-file-input" accept="image/*,video/*" multiple style="display: none;" onchange="processarAnexoChat(this)">
+      
+      <!-- 1. Botão Adicionar Mídia (+) -->
+      <button class="btn-barrachat-32" id="btn-chat-plus" onclick="abrirGaleriaDirecta()" title="Enviar Mídia" disabled>
+        <i class="fa-solid fa-plus"></i>
+      </button>
+
+      <!-- 2. Textarea Multilinha -->
       <textarea id="chat-text-input" class="chat-input-text" placeholder="Conversar..." oninput="tratarInputTexto(this)" onkeydown="checarTeclaChat(event)" onpaste="tratarColagemMidia(event)" disabled></textarea>
+
+      <!-- 3. Botão Cancelar Rascunho/Ação (X) -->
+      <button id="btn-cancel-chat" class="btn-barrachat-32 danger" onclick="cancelarAcaoChat()" title="Limpar" style="display: none;">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <!-- 4. Botão Dinâmico Principal (Envio/Mic) -->
+      <button id="btn-action-chat-main" class="btn-barrachat-32" onclick="executarAcaoBoatoPrincipal()" title="Gravar Áudio" disabled>
+        <i class="fa-solid fa-microphone" id="icon-action-chat-main"></i>
+      </button>
     </div>
   `;
 
@@ -387,7 +406,43 @@ function abrirGaleriaDirecta() {
   if (fileInput) fileInput.click();
 }
 
-// Suporte a Gravação de Áudio
+function atualizarIconeAcaoEnvio() {
+  const inputEl = document.getElementById('chat-text-input');
+  const btnAction = document.getElementById('btn-action-chat-main');
+  const iconAction = document.getElementById('icon-action-chat-main');
+
+  if (!btnAction || !iconAction) return;
+
+  const temTexto = inputEl && inputEl.value.trim().length > 0;
+  const temAnexos = anexosListDataUrl.length > 0;
+  const emEdicao = inputEl && inputEl.dataset.editingMsgId;
+
+  if (temTexto || temAnexos || emEdicao) {
+    if (!btnAction.classList.contains('send-active')) {
+      btnAction.className = 'btn-barrachat-32 send-active';
+      iconAction.className = 'fa-solid fa-paper-plane';
+      btnAction.title = emEdicao ? 'Salvar Edição' : 'Enviar';
+    }
+  } else {
+    btnAction.className = 'btn-barrachat-32';
+    iconAction.className = 'fa-solid fa-microphone';
+    btnAction.title = 'Gravar Áudio';
+  }
+}
+
+function executarAcaoBoatoPrincipal() {
+  const inputEl = document.getElementById('chat-text-input');
+  const temTexto = inputEl && inputEl.value.trim().length > 0;
+  const temAnexos = anexosListDataUrl.length > 0;
+  const emEdicao = inputEl && inputEl.dataset.editingMsgId;
+
+  if (temTexto || temAnexos || emEdicao) {
+    enviarMensagemChat();
+  } else {
+    iniciarGravacaoAudio();
+  }
+}
+
 async function iniciarGravacaoAudio() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     alert("Seu navegador não suporta gravação de áudio.");
@@ -439,13 +494,14 @@ function finalizarEEnviarAudio() {
   if (!mediaRecorder) return;
 
   mediaRecorder.onstop = () => {
-    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+    const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
     const reader = new FileReader();
     reader.onload = (e) => {
       anexosListDataUrl.push({
+        file: new File([audioBlob], `audio-${Date.now()}.mp3`, { type: 'audio/mp3' }),
         blob: audioBlob,
         url: e.target.result,
-        nome: `nota-de-audio-${Date.now()}.webm`,
+        nome: `nota-de-audio-${Date.now()}.mp3`,
         tipo: 'audio',
         isSpoiler: false
       });
@@ -461,7 +517,6 @@ function finalizarEEnviarAudio() {
   }
 }
 
-// Autocomplete de Menção (@)
 function checarEExibirMencoes(input) {
   const val = input.value;
   const cursor = input.selectionStart;
@@ -497,7 +552,7 @@ function checarEExibirMencoes(input) {
       box.innerHTML = filtrados.map(u => `
         <div class="chat-mention-item" onclick="inserirMencaoUsuario('${u.username || u.nome}')">
           <img src="${u.avatar_url || 'https://ui-avatars.com/api/?name=U'}" class="chat-mention-avatar" alt="Avatar">
-          <span>@${u.username || u.nome} (${u.display_name || u.nome || 'Usuário'})</span>
+          <span>@${u.username || u.nome}</span>
         </div>
       `).join('');
       return;
@@ -522,19 +577,16 @@ function inserirMencaoUsuario(username) {
   tratarInputTexto(input);
 }
 
-// Configuração do Drag and Drop de Mídias
 function configurarDragAndDropBarra() {
   const container = document.getElementById('chat-input-container');
   if (!container) return;
 
   ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    container.addEventListener(eventName, preventDefaults, false);
+    container.addEventListener(eventName, e => {
+      e.preventDefault();
+      e.stopPropagation();
+    }, false);
   });
-
-  function preventDefaults(e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
 
   ['dragenter', 'dragover'].forEach(eventName => {
     container.addEventListener(eventName, () => container.classList.add('drag-over'), false);
@@ -544,16 +596,10 @@ function configurarDragAndDropBarra() {
     container.addEventListener(eventName, () => container.classList.remove('drag-over'), false);
   });
 
-  container.addEventListener('drop', handleDrop, false);
-
-  function handleDrop(e) {
+  container.addEventListener('drop', e => {
     const dt = e.dataTransfer;
-    const files = dt.files;
-
-    if (files && files.length > 0) {
-      processarArquivosAnexos(files);
-    }
-  }
+    if (dt.files && dt.files.length > 0) processarArquivosAnexos(dt.files);
+  }, false);
 }
 
 function tratarColagemMidia(event) {
@@ -576,14 +622,12 @@ function tratarColagemMidia(event) {
 
 function ativarInputChat(ativo) {
   const btnPlus = document.getElementById('btn-chat-plus');
-  const btnMic = document.getElementById('btn-chat-mic');
+  const btnAction = document.getElementById('btn-action-chat-main');
   const inputText = document.getElementById('chat-text-input');
-  const btnSend = document.getElementById('btn-send-chat');
 
   if (btnPlus) btnPlus.disabled = !ativo;
-  if (btnMic) btnMic.disabled = !ativo;
+  if (btnAction) btnAction.disabled = !ativo;
   if (inputText) inputText.disabled = !ativo;
-  if (btnSend) btnSend.disabled = !ativo;
 
   if (inputText && window.chatTargetAtual) {
     inputText.placeholder = `Conversar com @${window.chatTargetAtual.username || window.chatTargetAtual.nome}...`;
@@ -593,13 +637,11 @@ function ativarInputChat(ativo) {
 }
 
 function tratarInputTexto(input) {
-  input.style.height = '22px';
-  input.style.height = Math.min(input.scrollHeight, 110) + 'px';
+  input.style.height = '26px';
+  input.style.height = Math.min(input.scrollHeight, 160) + 'px';
 
   const val = input.value;
   checarEExibirMencoes(input);
-
-  const draftBox = document.getElementById('chat-draft-reader-box');
 
   if (window.chatTargetAtual) {
     const key = `chat_draft_${window.chatTargetAtual.id}`;
@@ -607,18 +649,8 @@ function tratarInputTexto(input) {
     else localStorage.removeItem(key);
   }
 
-  if (draftBox) {
-    if (val.length > 60 || val.includes('\n')) {
-      draftBox.style.display = 'block';
-      draftBox.innerText = `Rascunho salvo...`;
-    } else {
-      draftBox.style.display = 'none';
-    }
-  }
-
   if (typeof window.emitirStatusDigitando === 'function') {
     window.emitirStatusDigitando(true);
-
     clearTimeout(typingTimeout);
     typingTimeout = setTimeout(() => {
       window.emitirStatusDigitando(false);
@@ -626,6 +658,7 @@ function tratarInputTexto(input) {
   }
 
   checarExibicaoBotaoCancelar();
+  atualizarIconeAcaoEnvio();
 }
 
 function restaurarRascunhoSalvo() {
@@ -640,7 +673,6 @@ function restaurarRascunhoSalvo() {
   }
 }
 
-// Upload seguro para o Supabase Storage com fallback DataURL
 async function realizarUploadMidiaSupabase(anexo) {
   const sb = obterSupabaseBarraChat();
   if (!sb || !anexo.file) return anexo.url;
@@ -653,36 +685,39 @@ async function realizarUploadMidiaSupabase(anexo) {
       .from('chat-media')
       .upload(filePath, anexo.file, { cacheControl: '3600', upsert: false });
 
-    if (error || !data) {
-      console.warn("[BarraChat] Falha no upload do Storage, usando DataURL fallback:", error);
-      return anexo.url;
-    }
+    if (error || !data) return anexo.url;
 
     const { data: publicUrlData } = sb.storage.from('chat-media').getPublicUrl(filePath);
     return publicUrlData ? publicUrlData.publicUrl : anexo.url;
   } catch (err) {
-    console.error("[BarraChat] Erro ao enviar arquivo para o Storage:", err);
     return anexo.url;
   }
 }
 
 async function enviarMensagemChat() {
   const inputEl = document.getElementById('chat-text-input');
-  const btnSend = document.getElementById('btn-send-chat');
-  let texto = inputEl ? inputEl.value.trim() : '';
-  
-  if (!texto && anexosListDataUrl.length === 0) return;
+  const btnAction = document.getElementById('btn-action-chat-main');
+  let texto = inputEl ? inputEl.value : '';
+
+  if (inputEl && inputEl.dataset.editingMsgId) {
+    const editingId = Number(inputEl.dataset.editingMsgId);
+    if (typeof window.salvarEdicaoMensagemSupabase === 'function') {
+      await window.salvarEdicaoMensagemSupabase(editingId, texto);
+    }
+    return;
+  }
+
+  if (!texto.trim() && anexosListDataUrl.length === 0) return;
 
   const usuarioLogado = typeof window.obterUsuarioLogadoChat === 'function' ? window.obterUsuarioLogadoChat() : null;
   const clientSupabase = obterSupabaseBarraChat();
   if (!usuarioLogado || !clientSupabase || !window.chatTargetAtual) return;
 
-  if (btnSend) btnSend.disabled = true;
+  if (btnAction) btnAction.disabled = true;
 
   try {
     let urlAnexo = null;
     if (anexosListDataUrl.length > 0) {
-      // Processa o upload dos anexos
       const listaMidiasProcessadas = await Promise.all(
         anexosListDataUrl.map(async (item) => {
           const finalUrl = item.file ? await realizarUploadMidiaSupabase(item) : item.url;
@@ -704,19 +739,20 @@ async function enviarMensagemChat() {
       imagem_url: urlAnexo
     };
 
-    if (mensagemRespondendo) {
-      payload.resposta_id = mensagemRespondendo.id;
-      payload.conteudo = `[reply:${mensagemRespondendo.id}] ${texto}`;
+    if (inputEl && inputEl.dataset.replyMsgId) {
+      const replyId = Number(inputEl.dataset.replyMsgId);
+      payload.resposta_id = replyId;
+      payload.conteudo = `[reply:${replyId}] ${texto}`;
     }
 
     localStorage.removeItem(`chat_draft_${window.chatTargetAtual.id}`);
 
     if (inputEl) {
       inputEl.value = '';
-      inputEl.style.height = '22px';
+      inputEl.style.height = '26px';
     }
     limparAnexoChat();
-    cancelarResposta();
+    cancelarAcaoChat();
 
     if (typeof window.emitirStatusDigitando === 'function') {
       window.emitirStatusDigitando(false);
@@ -728,19 +764,21 @@ async function enviarMensagemChat() {
     if (typeof window.carregarListaConversas === 'function') window.carregarListaConversas();
   } catch (err) {
     console.error("[BarraChat] Erro ao enviar mensagem:", err);
-    alert("Falha ao enviar mensagem.");
   } finally {
-    if (btnSend) btnSend.disabled = false;
+    if (btnAction) btnAction.disabled = false;
+    atualizarIconeAcaoEnvio();
   }
 }
 
 function checarTeclaChat(event) {
-  const input = document.getElementById('chat-text-input');
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
-    enviarMensagemChat();
-  } else if (event.key === 'ArrowUp' && input && input.value === '') {
+  if (event.key === 'Enter') {
+    if (!event.shiftKey && !isMobile) {
+      event.preventDefault();
+      enviarMensagemChat();
+    }
+  } else if (event.key === 'ArrowUp' && event.target.value === '') {
     event.preventDefault();
     const feed = document.getElementById('chat-messages-feed');
     if (feed) {
@@ -759,54 +797,37 @@ function checarTeclaChat(event) {
   }
 }
 
-function prepararRespostaMensagem(msgId, autor, conteudo) {
-  const textoLimpo = conteudo ? conteudo.replace(/^\[reply:\d+\]\s*/, '') : '';
-  mensagemRespondendo = { id: msgId, autor, conteudo: textoLimpo };
-  const replyBar = document.getElementById('chat-reply-preview-bar');
-  
-  if (replyBar) {
-    replyBar.style.display = 'flex';
-    replyBar.innerHTML = `
-      <div class="chat-reply-info">
-        <span class="chat-reply-label"><i class="fa-solid fa-reply"></i> Respondendo a <strong>${autor}</strong></span>
-        <span class="chat-reply-text">${textoLimpo}</span>
-      </div>
-      <button class="btn-barrachat-icon danger" onclick="cancelarResposta()" title="Cancelar Resposta"><i class="fa-solid fa-xmark"></i></button>
-    `;
-  }
-  checarExibicaoBotaoCancelar();
-  const inputEl = document.getElementById('chat-text-input');
-  if (inputEl) inputEl.focus();
-}
-
 function cancelarResposta() {
   mensagemRespondendo = null;
-  const replyBar = document.getElementById('chat-reply-preview-bar');
-  if (replyBar) { replyBar.style.display = 'none'; replyBar.innerHTML = ''; }
+  if (typeof window.cancelarRespostaMensagem === 'function') {
+    window.cancelarRespostaMensagem();
+  }
   checarExibicaoBotaoCancelar();
 }
 
 function cancelarAcaoChat() {
-  cancelarResposta();
+  if (typeof window.cancelarEdicaoMensagem === 'function') window.cancelarEdicaoMensagem();
+  if (typeof window.cancelarRespostaMensagem === 'function') window.cancelarRespostaMensagem();
+  
   limparAnexoChat();
   const inputEl = document.getElementById('chat-text-input');
   if (inputEl) {
     inputEl.value = '';
-    inputEl.style.height = '22px';
+    inputEl.style.height = '26px';
   }
   if (window.chatTargetAtual) localStorage.removeItem(`chat_draft_${window.chatTargetAtual.id}`);
-  
-  const draftBox = document.getElementById('chat-draft-reader-box');
-  if (draftBox) draftBox.style.display = 'none';
   checarExibicaoBotaoCancelar();
+  atualizarIconeAcaoEnvio();
 }
 
 function checarExibicaoBotaoCancelar() {
   const btnCancel = document.getElementById('btn-cancel-chat');
   const inputEl = document.getElementById('chat-text-input');
   const temTexto = inputEl && inputEl.value.trim() !== '';
+  const temAcaoAtiva = inputEl && (inputEl.dataset.editingMsgId || inputEl.dataset.replyMsgId);
+
   if (btnCancel) {
-    btnCancel.style.display = (mensagemRespondendo || anexosListDataUrl.length > 0 || temTexto) ? 'inline-flex' : 'none';
+    btnCancel.style.display = (temAcaoAtiva || anexosListDataUrl.length > 0 || temTexto) ? 'inline-flex' : 'none';
   }
 }
 
@@ -832,7 +853,7 @@ function processarArquivosAnexos(files) {
   });
 }
 
-async function processarAnexoChat(input) {
+function processarAnexoChat(input) {
   if (input.files && input.files.length > 0) {
     processarArquivosAnexos(input.files);
   }
@@ -867,6 +888,7 @@ function atualizarPreviewAnexos() {
     `).join('');
   }
   checarExibicaoBotaoCancelar();
+  atualizarIconeAcaoEnvio();
 }
 
 function removerAnexoUnico(index) {
@@ -888,7 +910,6 @@ window.ativarInputChat = ativarInputChat;
 window.tratarInputTexto = tratarInputTexto;
 window.enviarMensagemChat = enviarMensagemChat;
 window.checarTeclaChat = checarTeclaChat;
-window.prepararRespostaMensagem = prepararRespostaMensagem;
 window.cancelarResposta = cancelarResposta;
 window.cancelarAcaoChat = cancelarAcaoChat;
 window.processarAnexoChat = processarAnexoChat;
@@ -900,3 +921,4 @@ window.iniciarGravacaoAudio = iniciarGravacaoAudio;
 window.cancelarGravacaoAudio = cancelarGravacaoAudio;
 window.finalizarEEnviarAudio = finalizarEEnviarAudio;
 window.inserirMencaoUsuario = inserirMencaoUsuario;
+window.executarAcaoBoatoPrincipal = executarAcaoBoatoPrincipal;

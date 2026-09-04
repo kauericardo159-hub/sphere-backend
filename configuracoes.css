@@ -1,6 +1,6 @@
 /* ==========================================================================
    ESTILOS DA ABA CONFIGURAÇÕES / GERENCIAMENTO DE CONTAS (configuracoes.css)
-   Project Z Enhanced | Visual Dark Glassmorphism
+   Project Z Enhanced | Visual Cyber Dark Glassmorphism
    ========================================================================== */
 
 #configuracoes-view {
@@ -42,8 +42,8 @@
   justify-content: space-between;
   padding: 14px 18px;
   margin-bottom: 16px;
-  background: rgba(22, 12, 26, 0.88);
-  border: 1px solid rgba(255, 45, 85, 0.25);
+  background: rgba(22, 12, 26, 0.92);
+  border: 1px solid rgba(255, 45, 85, 0.28);
   border-radius: 18px;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -62,6 +62,25 @@
 .config-header-title i {
   color: #ff2d55;
   font-size: 1.2rem;
+}
+
+.btn-config-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-config-close:hover {
+  background: #ff2d55;
+  transform: rotate(90deg);
 }
 
 /* Seções Principais */
@@ -88,6 +107,65 @@
   gap: 8px;
 }
 
+.config-section-title.gold {
+  color: #ffd700;
+}
+
+.config-section-desc {
+  font-size: 0.82rem;
+  color: #b3a5b8;
+  margin-bottom: 12px;
+}
+
+/* Seção do Staff / Criador */
+.config-section.staff-section {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(22, 12, 26, 0.95) 100%);
+  border-color: rgba(255, 215, 0, 0.35);
+}
+
+.config-staff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.btn-staff-access {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  text-decoration: none;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.btn-staff-access i {
+  font-size: 1.4rem;
+}
+
+.btn-staff-access.server i { color: #ffd700; }
+.btn-staff-access.dev i { color: #00d2ff; }
+
+.btn-staff-access strong {
+  display: block;
+  font-size: 0.88rem;
+}
+
+.btn-staff-access span {
+  display: block;
+  font-size: 0.72rem;
+  color: #b3a5b8;
+}
+
+.btn-staff-access:hover {
+  transform: translateY(-2px);
+  border-color: #ffd700;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+}
+
 /* Lista de Contas Salvas */
 .config-accounts-list {
   display: flex;
@@ -98,25 +176,25 @@
 .config-account-card {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 12px 14px;
+  padding: 10px 14px;
   border-radius: 14px;
-  cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.config-account-card:hover {
-  background: rgba(255, 45, 85, 0.12);
-  border-color: rgba(255, 45, 85, 0.4);
-  transform: translateX(2px);
+.config-account-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  cursor: pointer;
 }
 
 .config-account-card.active {
   border-color: #ff2d55;
-  background: rgba(255, 45, 85, 0.15);
-  cursor: default;
+  background: rgba(255, 45, 85, 0.12);
 }
 
 .config-account-avatar {
@@ -135,7 +213,6 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  flex: 1;
 }
 
 .config-account-name {
@@ -149,19 +226,49 @@
   color: #b3a5b8;
 }
 
-.config-account-check {
-  color: #ff2d55;
-  font-size: 1.1rem;
+.config-account-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.config-account-swap {
-  color: #b3a5b8;
-  font-size: 0.9rem;
-  transition: color 0.2s ease;
+.btn-config-mini-swap {
+  background: rgba(0, 210, 255, 0.15);
+  color: #00d2ff;
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
 }
 
-.config-account-card:hover .config-account-swap {
-  color: #ff2d55;
+.btn-config-mini-swap:hover {
+  background: #00d2ff;
+  color: #000000;
+}
+
+.btn-config-mini-remove {
+  background: rgba(255, 56, 56, 0.12);
+  color: #ff3838;
+  border: 1px solid rgba(255, 56, 56, 0.25);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-config-mini-remove:hover {
+  background: #ff3838;
+  color: #ffffff;
 }
 
 .config-empty-msg {
@@ -169,6 +276,84 @@
   color: #b3a5b8;
   font-style: italic;
   padding: 8px 0;
+}
+
+/* Form de E-mail e Senha */
+.config-form-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.config-input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.config-input-row input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+  outline: none;
+  font-size: 0.88rem;
+}
+
+.btn-config-save-inline {
+  background: #ff2d55;
+  color: #ffffff;
+  border: none;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 0.82rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s ease;
+}
+
+.btn-config-save-inline:hover {
+  background: #e02447;
+}
+
+.config-email-badge {
+  font-size: 0.75rem;
+  color: #ffd700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.config-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.config-form-group label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #b3a5b8;
+}
+
+.config-form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+  font-size: 0.88rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.config-form-group input:focus {
+  border-color: #ff2d55;
 }
 
 /* Informações do Usuário Atual */
@@ -216,9 +401,13 @@
   transition: all 0.2s ease;
 }
 
-.btn-config-action:hover {
+.btn-config-action.primary {
   background: #ff2d55;
   color: #ffffff;
+}
+
+.btn-config-action.primary:hover {
+  background: #e02447;
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(255, 45, 85, 0.35);
 }
@@ -362,7 +551,7 @@
   background: #ff2e44;
 }
 
-/* Toast de Notificação */
+/* Toast Notification */
 .config-toast {
   position: fixed;
   bottom: 80px;
@@ -370,13 +559,16 @@
   transform: translateX(-50%);
   background: rgba(255, 45, 85, 0.95);
   color: #ffffff;
-  padding: 8px 20px;
+  padding: 10px 22px;
   border-radius: 20px;
   font-size: 0.82rem;
   font-weight: 800;
   z-index: 2200;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
   animation: fadeInConfig 0.2s ease-out;
 }
 
@@ -389,8 +581,10 @@
   background: rgba(46, 213, 115, 0.95);
 }
 
-/* Adaptações Responsivas */
+/* Responsividade */
 @media (max-width: 480px) {
   .config-container { padding: 10px; }
   .config-section { padding: 14px; border-radius: 14px; }
+  .config-input-row { flex-direction: column; }
+  .btn-config-save-inline { height: 40px; justify-content: center; }
 }

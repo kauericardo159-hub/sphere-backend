@@ -1,16 +1,21 @@
 // ==========================================================================
-// CHAT MESSAGES MODULE (mensagens.js) - RENDERING, PLAYERS & REALTIME
-// Project Z v5.0 | Supabase Realtime Channel, Custom Players & Media Grids
+// CHAT MESSAGES MODULE (mensagens.js) - SPHERE V5.2 UX ENHANCED
+// Fluid Gesture Mechanics, Mobile Haptics, High-Fidelity Reactions & Smooth Feed
 // ==========================================================================
 
 let supabaseSubscription = null;
+window.mensagemAlvoReacaoDireta = null;
 
-// Helper para obtenção segura da instância do Supabase
 function obterSupabaseMensagens() {
   return window.supabaseClient || window.supabase || window.sb || null;
 }
 
-// Helper Interno de Sanitização para Segurança Garantida
+function acionarVibracaoTatil(ms = 15) {
+  if (typeof window !== 'undefined' && window.navigator && typeof window.navigator.vibrate === 'function') {
+    try { window.navigator.vibrate(ms); } catch (e) {}
+  }
+}
+
 function sanitizarSeguro(str) {
   if (typeof window.sanitizarChat === 'function') return window.sanitizarChat(str);
   if (!str) return '';
@@ -32,6 +37,10 @@ function processarEmojisTwemoji(texto) {
     .replace(/:star:/g, '⭐')
     .replace(/:skull:/g, '💀');
 
+  if (window.DiscordEmojiSystem && typeof window.DiscordEmojiSystem.converter === 'function') {
+    return window.DiscordEmojiSystem.converter(parsed);
+  }
+
   if (window.twemoji && typeof window.twemoji.parse === 'function') {
     return window.twemoji.parse(parsed, {
       folder: 'svg',
@@ -47,13 +56,9 @@ function processarTextoChat(texto) {
   let textoLimpo = texto.replace(/^\[reply:\d+\]\s*/, '');
   let formatado = sanitizarSeguro(textoLimpo);
 
-  // Formatação de Spoilers ||texto||
   formatado = formatado.replace(/\|\|(.*?)\|\|/g, '<span class="chat-spoiler" onclick="this.classList.toggle(\'revealed\')">$1</span>');
-
-  // Suporte a Menções @username
   formatado = formatado.replace(/@([a-zA-Z0-9_]+)/g, '<span class="chat-mention-badge" onclick="if(typeof window.abrirPerfilPorUsername === \'function\') window.abrirPerfilPorUsername(\'$1\')">@$1</span>');
 
-  // URLs e Embeds
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   formatado = formatado.replace(urlRegex, (url) => {
     try {
@@ -86,7 +91,6 @@ function processarTextoChat(texto) {
   return processarEmojisTwemoji(formatado);
 }
 
-// Player Customizado de Vídeo
 function criarHtmlVideoCard(url) {
   const vidId = 'vid_' + Math.random().toString(36).substring(2, 9);
   return `
@@ -96,18 +100,18 @@ function criarHtmlVideoCard(url) {
         <i class="fa-solid fa-play"></i>
       </div>
       <div class="chat-video-controls-bar">
-        <button onclick="alternarPlayVideoCustom('${vidId}')" class="btn-vid-control" id="btn_play_${vidId}">
+        <button onclick="alternarPlayVideoCustom('${vidId}')" class="btn-chat-action-32" id="btn_play_${vidId}">
           <i class="fa-solid fa-play"></i>
         </button>
         <span class="vid-time-display" id="time_${vidId}">00:00</span>
         <input type="range" class="vid-seekbar" id="seek_${vidId}" value="0" min="0" max="100" oninput="mudarProgressoVideo('${vidId}', this.value)">
-        <button onclick="alternarMuteVideoCustom('${vidId}')" class="btn-vid-control" id="btn_mute_${vidId}">
+        <button onclick="alternarMuteVideoCustom('${vidId}')" class="btn-chat-action-32" id="btn_mute_${vidId}">
           <i class="fa-solid fa-volume-high"></i>
         </button>
-        <button onclick="alternarFullscreenVideoCustom('${vidId}')" class="btn-vid-control" title="Tela Cheia">
+        <button onclick="alternarFullscreenVideoCustom('${vidId}')" class="btn-chat-action-32" title="Tela Cheia">
           <i class="fa-solid fa-expand"></i>
         </button>
-        <a href="${url}" download class="btn-vid-control" title="Baixar Vídeo" onclick="event.stopPropagation();">
+        <a href="${url}" download class="btn-chat-action-32" title="Baixar Vídeo" onclick="event.stopPropagation();">
           <i class="fa-solid fa-download"></i>
         </a>
       </div>
@@ -169,20 +173,19 @@ function alternarFullscreenVideoCustom(vidId) {
   else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
 }
 
-// Player Customizado de Nota de Áudio
 function criarHtmlAudioCard(url) {
   const audioId = 'aud_' + Math.random().toString(36).substring(2, 9);
   return `
     <div class="chat-audio-custom-player">
       <audio id="${audioId}" src="${url}" preload="metadata" ontimeupdate="atualizarProgressoAudio('${audioId}')" onended="finalizarAudioCustom('${audioId}')"></audio>
-      <button onclick="alternarPlayAudioCustom('${audioId}')" class="btn-audio-play" id="btn_audioplay_${audioId}">
+      <button onclick="alternarPlayAudioCustom('${audioId}')" class="btn-chat-action-32" id="btn_audioplay_${audioId}">
         <i class="fa-solid fa-play"></i>
       </button>
       <div class="chat-audio-body">
         <input type="range" class="audio-seekbar" id="seek_${audioId}" value="0" min="0" max="100" oninput="mudarProgressoAudio('${audioId}', this.value)">
         <div class="chat-audio-time-row">
           <span id="time_${audioId}">00:00</span>
-          <button class="btn-audio-speed" id="speed_${audioId}" onclick="mudarVelocidadeAudio('${audioId}')">1x</button>
+          <button class="btn-chat-action-32" style="width: auto !important; height: 24px !important; border-radius: 8px !important; font-size: 0.65rem !important; padding: 0 6px !important;" id="speed_${audioId}" onclick="mudarVelocidadeAudio('${audioId}')">1x</button>
         </div>
       </div>
     </div>
@@ -251,24 +254,24 @@ function mudarVelocidadeAudio(audioId) {
 function processarECriarHtmlMidias(imagemUrlPayload) {
   if (!imagemUrlPayload) return '';
 
-  let listaMídias = [];
+  let listaMidias = [];
   try {
     const parsed = JSON.parse(imagemUrlPayload);
-    if (Array.isArray(parsed)) listaMídias = parsed;
-    else listaMídias = [imagemUrlPayload];
+    if (Array.isArray(parsed)) listaMidias = parsed;
+    else listaMidias = [imagemUrlPayload];
   } catch (e) {
-    listaMídias = [imagemUrlPayload];
+    listaMidias = [imagemUrlPayload];
   }
 
-  if (listaMídias.length === 0) return '';
+  if (listaMidias.length === 0) return '';
 
-  const total = listaMídias.length;
+  const total = listaMidias.length;
   let gridClass = 'grid-1';
   if (total === 2) gridClass = 'grid-2';
   else if (total === 3) gridClass = 'grid-3';
   else if (total >= 4) gridClass = 'grid-4';
 
-  const htmlItens = listaMídias.map(itemStr => {
+  const htmlItens = listaMidias.map(itemStr => {
     let urlReal = typeof itemStr === 'object' ? itemStr.url : itemStr;
     let isSpoiler = typeof itemStr === 'object' ? Boolean(itemStr.isSpoiler) : false;
 
@@ -308,19 +311,46 @@ function renderizarMensagensFeed(mensagens) {
 
   const meId = Number(usuarioLogado.id);
   const mapaMensagens = new Map(mensagens.map(m => [m.id, m]));
+  const esteveNoFim = (feed.scrollHeight - feed.scrollTop - feed.clientHeight) < 140;
 
-  const esteveNoFim = (feed.scrollHeight - feed.scrollTop - feed.clientHeight) < 120;
+  let htmlResult = '';
+  const LIMITE_SEQUENCIA_MS = 15 * 60 * 1000;
 
-  feed.innerHTML = mensagens.map(m => {
-    return montarHtmlMensagemUnica(m, meId, usuarioLogado, mapaMensagens);
-  }).join('');
+  for (let i = 0; i < mensagens.length; i++) {
+    const mAtual = mensagens[i];
+    const mProxima = mensagens[i + 1];
+
+    const mesmoRemetenteProximo = mProxima && (Number(mAtual.remetente_id) === Number(mProxima.remetente_id));
+    let tempoDiferenca = 0;
+    if (mesmoRemetenteProximo) {
+      const dataAtual = new Date(mAtual.created_at).getTime();
+      const dataProxima = new Date(mProxima.created_at).getTime();
+      tempoDiferenca = dataProxima - dataAtual;
+    }
+
+    const mAnterior = mensagens[i - 1];
+    const mesmoRemetenteAnterior = mAnterior && (Number(mAtual.remetente_id) === Number(mAnterior.remetente_id));
+    let diferencaComAnterior = 0;
+    if (mesmoRemetenteAnterior) {
+      diferencaComAnterior = new Date(mAtual.created_at).getTime() - new Date(mAnterior.created_at).getTime();
+    }
+
+    const ehTopoBloco = !mesmoRemetenteAnterior || diferencaComAnterior > LIMITE_SEQUENCIA_MS;
+    const ehFimBloco = !mesmoRemetenteProximo || tempoDiferenca > LIMITE_SEQUENCIA_MS;
+
+    htmlResult += montarHtmlMensagemUnica(mAtual, meId, usuarioLogado, mapaMensagens, ehTopoBloco, ehFimBloco);
+  }
+
+  feed.innerHTML = htmlResult;
+  aplicarGestosNasMensagens();
+  vincularInterceptadorDeEnvio();
 
   if (esteveNoFim || feed.children.length < 20) {
     feed.scrollTop = feed.scrollHeight;
   }
 }
 
-function montarHtmlMensagemUnica(m, meId, usuarioLogado, mapaMensagens) {
+function montarHtmlMensagemUnica(m, meId, usuarioLogado, mapaMensagens, ehTopoBloco, ehFimBloco) {
   const eMeu = Number(m.remetente_id) === meId;
   const autorName = eMeu 
     ? sanitizarSeguro(usuarioLogado.display_name || usuarioLogado.nome || usuarioLogado.username) 
@@ -394,20 +424,22 @@ function montarHtmlMensagemUnica(m, meId, usuarioLogado, mapaMensagens) {
   if (m.reacoes && typeof m.reacoes === 'object' && !m.excluido) {
     const reacoesEntries = Object.entries(m.reacoes);
     if (reacoesEntries.length > 0) {
-      htmlReacoes = `<div class="chat-msg-reactions-list">` + reacoesEntries.map(([emoji, usuariosArr]) => {
+      htmlReacoes = `<div class="chat-msg-reactions-list" id="reactions-container-${m.id}">` + reacoesEntries.map(([emoji, usuariosArr]) => {
         const qtd = Array.isArray(usuariosArr) ? usuariosArr.length : Number(usuariosArr);
         const euReagi = Array.isArray(usuariosArr) && usuariosArr.includes(meId);
         if (qtd <= 0) return '';
         return `<button class="chat-reaction-chip ${euReagi ? 'reacted' : ''}" onclick="alternarReacaoMensagem(${m.id}, '${emoji}')"><span>${processarEmojisTwemoji(emoji)}</span><small>${qtd}</small></button>`;
       }).join('') + `</div>`;
     }
+  } else if (!m.excluido) {
+    htmlReacoes = `<div class="chat-msg-reactions-list" id="reactions-container-${m.id}"></div>`;
   }
 
   let readReceiptHtml = '';
   if (m.isSending) {
     readReceiptHtml = `<span class="chat-sending-status" title="Enviando..."><i class="fa-solid fa-spinner fa-spin"></i></span>`;
   } else if (m.isError) {
-    readReceiptHtml = `<span class="chat-error-status" onclick="reenviarMensagemComErro(${m.id})" title="Erro ao enviar. Clique para reenviar!"><i class="fa-solid fa-triangle-exclamation"></i> Falha</span>`;
+    readReceiptHtml = `<span class="chat-error-status" onclick="reenviarMensagemComErro(${m.id})" title="Erro ao enviar."><i class="fa-solid fa-triangle-exclamation"></i> Falha</span>`;
   } else if (eMeu) {
     readReceiptHtml = `
       <span class="chat-read-receipt ${m.lida ? 'read' : ''}" title="${m.lida ? 'Lido' : 'Enviado'}">
@@ -416,19 +448,28 @@ function montarHtmlMensagemUnica(m, meId, usuarioLogado, mapaMensagens) {
     `;
   }
 
+  const editadoBadge = m.editado ? `<span class="chat-edited-indicator" style="font-size:0.65rem; opacity:0.75; margin-left:4px;">(editado)</span>` : '';
+  const sequenceClass = `${ehTopoBloco ? 'seq-top' : 'seq-middle'} ${ehFimBloco ? 'seq-bottom' : ''}`;
+  const textoLimpoEscapado = m.conteudo ? m.conteudo.replace(/^\[reply:\d+\]\s*/, '').replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '';
+
   return `
-    <div class="chat-msg-row ${eMeu ? 'me' : ''} ${m.excluido ? 'deleted' : ''} ${m.isSending ? 'sending' : ''}" id="msg-row-${m.id}" data-msg-id="${m.id}" data-autor="${autorName}">
-      <div class="chat-msg-avatar-container">
-        <img src="${avatarSrc}" class="chat-msg-avatar" onerror="this.onerror=null; this.src='${defaultAvatar}';" alt="Avatar">
-        ${molduraSrc ? `<img src="${molduraSrc}" class="chat-msg-moldura" alt="Moldura">` : ''}
-      </div>
+    <div class="chat-msg-row ${eMeu ? 'me' : ''} ${sequenceClass} ${m.excluido ? 'deleted' : ''} ${m.isSending ? 'sending' : ''}" id="msg-row-${m.id}" data-msg-id="${m.id}" data-autor="${autorName}" data-conteudo="${textoLimpoEscapado}">
+      
+      ${ehTopoBloco ? `
+        <div class="chat-msg-avatar-container">
+          <img src="${avatarSrc}" class="chat-msg-avatar" onerror="this.onerror=null; this.src='${defaultAvatar}';" alt="Avatar">
+          ${molduraSrc ? `<img src="${molduraSrc}" class="chat-msg-moldura" alt="Moldura">` : ''}
+        </div>
+      ` : `<div class="chat-msg-avatar-spacer"></div>`}
 
       <div class="chat-msg-content">
         ${htmlHeaderResposta}
 
-        <div class="chat-msg-header-info">
-          <span class="chat-msg-author-name">${autorName}</span>
-        </div>
+        ${ehTopoBloco ? `
+          <div class="chat-msg-header-info">
+            <span class="chat-msg-author-name">${autorName}</span>
+          </div>
+        ` : ''}
 
         <div class="chat-msg-bubble-wrapper">
           <div class="chat-msg-bubble" style="${inlineStyleBubble}">
@@ -438,21 +479,381 @@ function montarHtmlMensagemUnica(m, meId, usuarioLogado, mapaMensagens) {
 
           ${(!m.excluido && !m.isSending) ? `
             <div class="chat-msg-quick-actions">
-              <button onclick="if(typeof window.prepararRespostaMensagem === 'function') window.prepararRespostaMensagem(${m.id}, '${autorName}', '${m.conteudo ? m.conteudo.replace(/^\[reply:\d+\]\s*/, '').replace(/'/g, "\\'") : ''}')" title="Responder"><i class="fa-solid fa-reply"></i></button>
-              <button onclick="abrirBarraReacoesRapidas(event, ${m.id})" title="Reagir"><i class="fa-solid fa-face-smile"></i></button>
-              ${eMeu ? `<button onclick="excluirPropriaMensagem(${m.id})" title="Excluir" style="color:#ff4757;"><i class="fa-solid fa-trash"></i></button>` : ''}
+              <button class="btn-chat-action-32" onclick="prepararRespostaMensagem(${m.id}, '${autorName}', '${textoLimpoEscapado}')" title="Responder"><i class="fa-solid fa-reply"></i></button>
+              <button class="btn-chat-action-32" onclick="abrirBarraReacoesRapidas(event, ${m.id})" title="Reagir"><i class="fa-solid fa-face-smile"></i></button>
+              <button class="btn-chat-action-32" onclick="copiarTextoMensagem('${textoLimpoEscapado}')" title="Copiar"><i class="fa-solid fa-copy"></i></button>
+              ${eMeu ? `<button class="btn-chat-action-32" onclick="prepararEdicaoMensagem(${m.id}, '${textoLimpoEscapado}')" title="Editar"><i class="fa-solid fa-pen"></i></button>` : ''}
+              ${eMeu ? `<button class="btn-chat-action-32 danger" onclick="excluirPropriaMensagem(${m.id})" title="Excluir"><i class="fa-solid fa-trash"></i></button>` : ''}
             </div>
           ` : ''}
         </div>
 
         ${htmlReacoes}
-        <div class="chat-msg-footer-info">
-          <span class="chat-msg-timestamp">${dataFormatada}</span>
-          ${readReceiptHtml}
-        </div>
+        
+        ${ehFimBloco ? `
+          <div class="chat-msg-footer-info">
+            <span class="chat-msg-timestamp">${dataFormatada} ${editadoBadge}</span>
+            ${readReceiptHtml}
+          </div>
+        ` : ''}
       </div>
     </div>
   `;
+}
+
+function aplicarGestosNasMensagens() {
+  const rows = document.querySelectorAll('.chat-msg-row:not(.deleted)');
+
+  rows.forEach(row => {
+    const bubble = row.querySelector('.chat-msg-bubble');
+    if (!bubble || bubble.dataset.gesturesApplied) return;
+    bubble.dataset.gesturesApplied = 'true';
+
+    const msgId = Number(row.dataset.msgId);
+    const autorName = row.dataset.autor;
+    const conteudo = row.dataset.conteudo;
+
+    let lastTap = 0;
+    let pressTimer = null;
+
+    // Toque longo e Duplo Clique
+    bubble.addEventListener('touchstart', (e) => {
+      pressTimer = setTimeout(() => {
+        acionarVibracaoTatil(25);
+        abrirMenuOpcoesMensagem(e, msgId, autorName, conteudo, row.classList.contains('me'));
+      }, 500);
+    }, { passive: true });
+
+    bubble.addEventListener('touchend', (e) => {
+      clearTimeout(pressTimer);
+      const currentTime = new Date().getTime();
+      const tapLength = currentTime - lastTap;
+      if (tapLength < 300 && tapLength > 0) {
+        e.preventDefault();
+        acionarVibracaoTatil(15);
+        abrirMenuOpcoesMensagem(e, msgId, autorName, conteudo, row.classList.contains('me'));
+      }
+      lastTap = currentTime;
+    });
+
+    bubble.addEventListener('touchmove', () => clearTimeout(pressTimer), { passive: true });
+
+    bubble.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      acionarVibracaoTatil(15);
+      abrirMenuOpcoesMensagem(e, msgId, autorName, conteudo, row.classList.contains('me'));
+    });
+
+    // Swipe para Responder
+    let startX = 0;
+    let currentX = 0;
+    let isSwiping = false;
+
+    bubble.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+      isSwiping = true;
+    }, { passive: true });
+
+    bubble.addEventListener('touchmove', (e) => {
+      if (!isSwiping) return;
+      currentX = e.touches[0].clientX;
+      const diffX = currentX - startX;
+
+      if (diffX > 15 && diffX < 90) {
+        bubble.style.transform = `translateX(${diffX}px)`;
+        bubble.style.transition = 'none';
+      }
+    }, { passive: true });
+
+    bubble.addEventListener('touchend', () => {
+      if (!isSwiping) return;
+      isSwiping = false;
+      const diffX = currentX - startX;
+
+      if (diffX >= 60) {
+        acionarVibracaoTatil(20);
+        prepararRespostaMensagem(msgId, autorName, conteudo);
+      }
+
+      bubble.style.transition = 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+      bubble.style.transform = 'translateX(0px)';
+      startX = 0;
+      currentX = 0;
+    });
+  });
+}
+
+function abrirMenuOpcoesMensagem(e, msgId, autor, conteudo, eMeu) {
+  fecharMenuContextoMsg();
+
+  const menu = document.createElement('div');
+  menu.id = 'chat-msg-context-menu';
+  menu.className = 'chat-context-menu';
+
+  menu.innerHTML = `
+    <div class="chat-menu-title">${autor}</div>
+    <button onclick="prepararRespostaMensagem(${msgId}, '${autor}', '${conteudo}'); fecharMenuContextoMsg();"><i class="fa-solid fa-reply"></i> Responder</button>
+    <button onclick="abrirPickerParaReacao(event, ${msgId}); fecharMenuContextoMsg();"><i class="fa-solid fa-face-smile"></i> Reagir com Emoji</button>
+    <button onclick="copiarTextoMensagem('${conteudo}'); fecharMenuContextoMsg();"><i class="fa-solid fa-copy"></i> Copiar Texto</button>
+    ${eMeu ? `<button onclick="prepararEdicaoMensagem(${msgId}, '${conteudo}'); fecharMenuContextoMsg();"><i class="fa-solid fa-pen"></i> Editar</button>` : ''}
+    ${eMeu ? `<button class="danger" onclick="excluirPropriaMensagem(${msgId}); fecharMenuContextoMsg();"><i class="fa-solid fa-trash"></i> Excluir</button>` : ''}
+  `;
+
+  document.body.appendChild(menu);
+
+  const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : window.innerWidth / 2);
+  const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : window.innerHeight / 2);
+
+  const menuWidth = 200;
+  const menuHeight = 220;
+
+  const posX = Math.min(window.innerWidth - menuWidth - 16, Math.max(16, clientX));
+  const posY = Math.min(window.innerHeight - menuHeight - 16, Math.max(16, clientY));
+
+  menu.style.left = `${posX}px`;
+  menu.style.top = `${posY}px`;
+
+  const fechar = (ev) => {
+    if (!menu.contains(ev.target)) {
+      fecharMenuContextoMsg();
+      document.removeEventListener('click', fechar);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', fechar), 10);
+}
+
+function fecharMenuContextoMsg() {
+  const el = document.getElementById('chat-msg-context-menu');
+  if (el) el.remove();
+}
+
+async function alternarReacaoMensagem(msgId, emoji) {
+  acionarVibracaoTatil(10);
+  const clientSupabase = obterSupabaseMensagens();
+  const usuarioLogado = typeof window.obterUsuarioLogadoChat === 'function' ? window.obterUsuarioLogadoChat() : null;
+  if (!clientSupabase || !usuarioLogado) return;
+  const meId = Number(usuarioLogado.id);
+
+  const container = document.getElementById(`reactions-container-${msgId}`);
+  if (container) {
+    let chipExistente = null;
+    const chips = container.querySelectorAll('.chat-reaction-chip');
+    chips.forEach(chip => {
+      if (chip.innerHTML.includes(emoji)) chipExistente = chip;
+    });
+
+    if (chipExistente) {
+      const euJaReagi = chipExistente.classList.contains('reacted');
+      const small = chipExistente.querySelector('small');
+      let qtd = Number(small ? small.innerText : 1);
+
+      if (euJaReagi) {
+        qtd--;
+        chipExistente.classList.remove('reacted');
+        if (qtd <= 0) chipExistente.remove();
+        else if (small) small.innerText = qtd;
+      } else {
+        qtd++;
+        chipExistente.classList.add('reacted');
+        if (small) small.innerText = qtd;
+      }
+    } else {
+      const novoChip = document.createElement('button');
+      novoChip.className = 'chat-reaction-chip reacted';
+      novoChip.onclick = () => alternarReacaoMensagem(msgId, emoji);
+      novoChip.innerHTML = `<span>${processarEmojisTwemoji(emoji)}</span><small>1</small>`;
+      container.appendChild(novoChip);
+    }
+  }
+
+  try {
+    const { data: msg } = await clientSupabase.from('mensagens').select('reacoes').eq('id', msgId).single();
+    let reacoesObj = msg && msg.reacoes && typeof msg.reacoes === 'object' ? { ...msg.reacoes } : {};
+    let listaUsuarios = Array.isArray(reacoesObj[emoji]) ? [...reacoesObj[emoji]] : [];
+
+    if (listaUsuarios.includes(meId)) {
+      listaUsuarios = listaUsuarios.filter(id => id !== meId);
+    } else {
+      listaUsuarios.push(meId);
+    }
+
+    if (listaUsuarios.length > 0) reacoesObj[emoji] = listaUsuarios;
+    else delete reacoesObj[emoji];
+
+    await clientSupabase.from('mensagens').update({ reacoes: reacoesObj }).eq('id', msgId);
+  } catch (err) { 
+    console.error("[Chat] Erro ao sincronizar reação no Supabase:", err); 
+  }
+}
+
+function abrirBarraReacoesRapidas(event, msgId) {
+  event.stopPropagation();
+  acionarVibracaoTatil(10);
+  const antigo = document.getElementById('chat-quick-reaction-bar');
+  if (antigo) antigo.remove();
+
+  const barra = document.createElement('div');
+  barra.id = 'chat-quick-reaction-bar';
+  barra.className = 'chat-quick-reaction-bar';
+
+  const emojisBase = ['👍', '❤️', '🔥', '😂', '🎉', '💀'];
+  barra.innerHTML = emojisBase.map(e => `
+    <button onclick="alternarReacaoMensagem(${msgId}, '${e}'); document.getElementById('chat-quick-reaction-bar')?.remove();">
+      ${processarEmojisTwemoji(e)}
+    </button>
+  `).join('') + `
+    <button class="btn-more-reactions" onclick="abrirPickerParaReacao(event, ${msgId})" title="Mais reações">
+      <i class="fa-solid fa-plus" style="font-size:0.85rem; color:#d1c4d6;"></i>
+    </button>
+  `;
+
+  document.body.appendChild(barra);
+
+  const rect = event.currentTarget.getBoundingClientRect();
+  const barraWidth = 240;
+  
+  const posX = Math.min(window.innerWidth - barraWidth - 12, Math.max(12, rect.left - (barraWidth / 2)));
+  const posY = Math.max(12, rect.top - 52);
+
+  barra.style.top = `${posY}px`;
+  barra.style.left = `${posX}px`;
+
+  const fechar = (e) => {
+    if (!barra.contains(e.target)) {
+      barra.remove();
+      document.removeEventListener('click', fechar);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', fechar), 10);
+}
+
+function abrirPickerParaReacao(event, msgId) {
+  event.stopPropagation();
+  window.mensagemAlvoReacaoDireta = msgId;
+
+  if (window.DiscordEmojiSystem && typeof window.DiscordEmojiSystem.alternarSeletor === 'function') {
+    window.DiscordEmojiSystem.alternarSeletor('chat-text-input', true);
+  }
+}
+
+function prepararRespostaMensagem(msgId, autor, texto) {
+  const inputEl = document.getElementById('chat-text-input') || document.querySelector('.chat-input-text');
+  if (!inputEl) return;
+
+  cancelarEdicaoMensagem();
+
+  inputEl.dataset.replyMsgId = msgId;
+
+  const bar = document.getElementById('chat-input-reply-bar') || document.querySelector('.chat-reply-preview');
+  if (bar) {
+    bar.style.display = 'flex';
+    bar.innerHTML = `
+      <div style="display:flex; align-items:center; gap:8px; font-size:0.78rem; color:#ff2d55; overflow:hidden;">
+        <i class="fa-solid fa-reply"></i>
+        <span>Respondendo <strong>@${autor}</strong>: "${texto.slice(0, 30)}${texto.length > 30 ? '...' : ''}"</span>
+      </div>
+      <button onclick="cancelarRespostaMensagem()" style="background:transparent; border:none; color:#a898b0; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+    `;
+  }
+  inputEl.focus();
+}
+
+function cancelarRespostaMensagem() {
+  const inputEl = document.getElementById('chat-text-input') || document.querySelector('.chat-input-text');
+  if (inputEl) delete inputEl.dataset.replyMsgId;
+
+  const bar = document.getElementById('chat-input-reply-bar') || document.querySelector('.chat-reply-preview');
+  if (bar) bar.style.display = 'none';
+}
+
+function prepararEdicaoMensagem(msgId, textoAtual) {
+  const inputEl = document.getElementById('chat-text-input') || document.querySelector('.chat-input-text');
+  if (!inputEl) return;
+
+  cancelarRespostaMensagem();
+
+  inputEl.value = textoAtual;
+  inputEl.focus();
+  inputEl.dataset.editingMsgId = msgId;
+
+  const bar = document.getElementById('chat-input-reply-bar') || document.querySelector('.chat-reply-preview');
+  if (bar) {
+    bar.style.display = 'flex';
+    bar.innerHTML = `
+      <div style="display:flex; align-items:center; gap:8px; font-size:0.78rem; color:#ff2d55;">
+        <i class="fa-solid fa-pen"></i> Editando mensagem... (Pressione Enter para Salvar)
+      </div>
+      <button onclick="cancelarEdicaoMensagem()" style="background:transparent; border:none; color:#a898b0; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+    `;
+  }
+}
+
+function cancelarEdicaoMensagem() {
+  const inputEl = document.getElementById('chat-text-input') || document.querySelector('.chat-input-text');
+  if (inputEl) {
+    delete inputEl.dataset.editingMsgId;
+    inputEl.value = '';
+  }
+  const bar = document.getElementById('chat-input-reply-bar') || document.querySelector('.chat-reply-preview');
+  if (bar) bar.style.display = 'none';
+}
+
+async function salvarEdicaoMensagemSupabase(msgId, novoTexto) {
+  const clientSupabase = obterSupabaseMensagens();
+  if (!clientSupabase || !msgId || !novoTexto.trim()) return;
+
+  try {
+    await clientSupabase
+      .from('mensagens')
+      .update({ conteudo: novoTexto.trim(), editado: true, edited_at: new Date().toISOString() })
+      .eq('id', msgId);
+
+    cancelarEdicaoMensagem();
+
+    if (window.chatTargetAtual && typeof window.carregarMensagensFeedSilencioso === 'function') {
+      window.carregarMensagensFeedSilencioso(Number(window.chatTargetAtual.id));
+    }
+  } catch (err) {
+    console.error("[Chat] Erro ao salvar edição no Supabase:", err);
+  }
+}
+
+function vincularInterceptadorDeEnvio() {
+  const inputEl = document.getElementById('chat-text-input') || document.querySelector('.chat-input-text');
+  if (!inputEl || inputEl.dataset.interceptorBound) return;
+
+  inputEl.dataset.interceptorBound = 'true';
+
+  const tratarEnvioSubmissao = async (e) => {
+    if (e.type === 'keydown' && (e.key !== 'Enter' || e.shiftKey)) return;
+
+    const texto = inputEl.value.trim();
+    const editingId = inputEl.dataset.editingMsgId;
+    const replyId = inputEl.dataset.replyMsgId;
+
+    if (!texto) return;
+
+    if (editingId) {
+      e.preventDefault();
+      e.stopPropagation();
+      await salvarEdicaoMensagemSupabase(Number(editingId), texto);
+      return;
+    }
+
+    if (replyId) {
+      inputEl.value = `[reply:${replyId}] ${texto}`;
+      delete inputEl.dataset.replyMsgId;
+      cancelarRespostaMensagem();
+    }
+  };
+
+  inputEl.addEventListener('keydown', tratarEnvioSubmissao, true);
+
+  const btnSend = document.getElementById('btn-chat-send') || document.querySelector('.chat-btn-send') || document.querySelector('button[type="submit"]');
+  if (btnSend && !btnSend.dataset.interceptorBound) {
+    btnSend.dataset.interceptorBound = 'true';
+    btnSend.addEventListener('click', tratarEnvioSubmissao, true);
+  }
 }
 
 function rolarParaMensagem(msgId) {
@@ -463,48 +864,16 @@ function rolarParaMensagem(msgId) {
   setTimeout(() => el.classList.remove('chat-msg-highlight'), 2000);
 }
 
-async function alternarReacaoMensagem(msgId, emoji) {
-  const clientSupabase = obterSupabaseMensagens();
-  const usuarioLogado = typeof window.obterUsuarioLogadoChat === 'function' ? window.obterUsuarioLogadoChat() : null;
-  if (!clientSupabase || !usuarioLogado) return;
-  const meId = Number(usuarioLogado.id);
-
-  try {
-    const { data: msg } = await clientSupabase.from('mensagens').select('reacoes').eq('id', msgId).single();
-    let reacoesObj = msg && msg.reacoes && typeof msg.reacoes === 'object' ? { ...msg.reacoes } : {};
-    let listaUsuarios = Array.isArray(reacoesObj[emoji]) ? [...reacoesObj[emoji]] : [];
-
-    if (listaUsuarios.includes(meId)) listaUsuarios = listaUsuarios.filter(id => id !== meId);
-    else listaUsuarios.push(meId);
-
-    if (listaUsuarios.length > 0) reacoesObj[emoji] = listaUsuarios;
-    else delete reacoesObj[emoji];
-
-    await clientSupabase.from('mensagens').update({ reacoes: reacoesObj }).eq('id', msgId);
-  } catch (err) { 
-    console.error("[Chat] Erro ao aplicar reação:", err); 
-  }
-}
-
-function abrirBarraReacoesRapidas(event, msgId) {
-  event.stopPropagation();
-  const antigo = document.getElementById('chat-quick-reaction-bar');
-  if (antigo) antigo.remove();
-
-  const barra = document.createElement('div');
-  barra.id = 'chat-quick-reaction-bar';
-  barra.className = 'chat-quick-reaction-bar';
-
-  const emojisBase = ['👍', '❤️', '🔥', '😂', '🎉', '💀'];
-  barra.innerHTML = emojisBase.map(e => `<button onclick="alternarReacaoMensagem(${msgId}, '${e}'); document.getElementById('chat-quick-reaction-bar')?.remove();">${processarEmojisTwemoji(e)}</button>`).join('');
-  document.body.appendChild(barra);
-
-  const rect = event.currentTarget.getBoundingClientRect();
-  barra.style.top = `${Math.max(10, rect.top - 45)}px`;
-  barra.style.left = `${Math.min(window.innerWidth - 200, rect.left - 80)}px`;
-
-  const fechar = () => { barra.remove(); document.removeEventListener('click', fechar); };
-  setTimeout(() => document.addEventListener('click', fechar), 10);
+function copiarTextoMensagem(texto) {
+  if (!texto) return;
+  navigator.clipboard.writeText(texto).then(() => {
+    acionarVibracaoTatil(15);
+    if (typeof window.mostrarToastChat === 'function') {
+      window.mostrarToastChat("Texto copiado!");
+    } else {
+      alert("Texto copiado!");
+    }
+  });
 }
 
 async function excluirPropriaMensagem(msgId) {
@@ -514,6 +883,9 @@ async function excluirPropriaMensagem(msgId) {
 
   try {
     await clientSupabase.from('mensagens').update({ conteudo: 'Mensagem excluída', imagem_url: null, excluido: true, reacoes: {} }).eq('id', msgId);
+    if (window.chatTargetAtual && typeof window.carregarMensagensFeedSilencioso === 'function') {
+      window.carregarMensagensFeedSilencioso(Number(window.chatTargetAtual.id));
+    }
   } catch (err) { 
     console.error("[Chat] Erro ao excluir mensagem:", err); 
   }
@@ -562,7 +934,7 @@ function abrirMidiaFull(url, tipo = 'imagem') {
     <div class="chat-modal-content-wrapper">
       <div class="chat-modal-header-bar">
         <a href="${url}" download class="chat-modal-download-btn"><i class="fa-solid fa-download"></i> Baixar Arquivo</a>
-        <button class="chat-modal-close-btn">&times;</button>
+        <button class="chat-modal-close-btn btn-chat-action-32" style="background: rgba(255, 255, 255, 0.2); border: none; color: #fff;">&times;</button>
       </div>
       ${isVid 
         ? `<video src="${url}" controls autoPlay class="chat-modal-video"></video>` 
@@ -578,6 +950,13 @@ window.renderizarMensagensFeed = renderizarMensagensFeed;
 window.rolarParaMensagem = rolarParaMensagem;
 window.alternarReacaoMensagem = alternarReacaoMensagem;
 window.abrirBarraReacoesRapidas = abrirBarraReacoesRapidas;
+window.abrirPickerParaReacao = abrirPickerParaReacao;
+window.prepararRespostaMensagem = prepararRespostaMensagem;
+window.cancelarRespostaMensagem = cancelarRespostaMensagem;
+window.copiarTextoMensagem = copiarTextoMensagem;
+window.prepararEdicaoMensagem = prepararEdicaoMensagem;
+window.cancelarEdicaoMensagem = cancelarEdicaoMensagem;
+window.salvarEdicaoMensagemSupabase = salvarEdicaoMensagemSupabase;
 window.excluirPropriaMensagem = excluirPropriaMensagem;
 window.iniciarRealtimeGlobalChat = iniciarRealtimeGlobalChat;
 window.abrirMidiaFull = abrirMidiaFull;

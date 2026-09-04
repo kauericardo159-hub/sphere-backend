@@ -1,6 +1,6 @@
 // ==========================================================================
 // MÓDULO DE EDIÇÃO DE PERFIL - ESTILO PROJECT Z (editarperfil.js)
-// Project Z v5.0 | Integrado com status.js (int8), Cropper.js & Molduras
+// Project Z v5.0 | Integrado com status.js, Cropper.js & verificados.js (V5.2)
 // ==========================================================================
 
 (function () {
@@ -134,30 +134,43 @@
 
   function extrairListaItens(str) {
     if (!str) return [];
+    if (Array.isArray(str)) return str;
     return String(str)
-      .split('|')
-      .map(item => item.trim())
+      .split(/[,|]/)
+      .map(item => item.trim().toLowerCase())
       .filter(item => item.length > 0);
   }
 
   function processarEntradaFormatada(lista) {
     if (!Array.isArray(lista) || lista.length === 0) return null;
-    return lista.join(' | ');
+    return lista.join(',');
   }
 
+  /**
+   * Mapeamento de permissões alinhado com SISTEMA_BADGES do verificados.js
+   */
   function calcularSelosPermitidos(usuario) {
     const selos = new Set();
+    const sistema = window.SISTEMA_BADGES || {};
 
-    if (usuario.is_creator || usuario.is_criador) selos.add('Creator');
-    if (usuario.is_verified) selos.add('Verificado');
-    if (usuario.is_admin || usuario.role === 'admin') selos.add('Admin');
+    if ((usuario.is_creator || usuario.is_criador) && sistema.creator) selos.add('creator');
+    if (usuario.is_verified && sistema.verified) selos.add('verified');
+    if ((usuario.is_mod || usuario.is_moderator) && sistema.mod) selos.add('mod');
+    if ((usuario.is_dev || usuario.is_developer) && sistema.dev) selos.add('dev');
+    if (usuario.is_vip && sistema.vip) selos.add('vip');
+    if (usuario.is_booster && sistema.booster) selos.add('booster');
 
+    // Mapeia selos adicionais concedidos via BD
     if (usuario.selos_concedidos) {
-      extrairListaItens(usuario.selos_concedidos).forEach(s => selos.add(s));
+      extrairListaItens(usuario.selos_concedidos).forEach(s => {
+        if (sistema[s]) selos.add(s);
+      });
     }
 
     if (usuario.verificados) {
-      extrairListaItens(usuario.verificados).forEach(s => selos.add(s));
+      extrairListaItens(usuario.verificados).forEach(s => {
+        if (sistema[s]) selos.add(s);
+      });
     }
 
     return Array.from(selos);
@@ -289,35 +302,49 @@
     });
   }
 
+  /**
+   * Renderização de Chips integrada com verificados.js
+   */
   function renderizarChipsVerificados() {
     const container = document.getElementById('container-verificados-chips');
+    const previewContainer = document.getElementById('container-verificados-preview');
     if (!container) return;
+
+    const sistema = window.SISTEMA_BADGES || {};
 
     if (selosAutorizadosUsuario.length === 0) {
       container.innerHTML = `<span class="permission-notice"><i class="fa-solid fa-lock"></i> Nenhum selo de verificado atribuído a esta conta.</span>`;
+      if (previewContainer) previewContainer.innerHTML = '';
       return;
     }
 
-    container.innerHTML = selosAutorizadosUsuario.map(selo => {
-      const estaAtivo = selosSelecionados.includes(selo);
+    container.innerHTML = selosAutorizadosUsuario.map(chaveSelo => {
+      const badgeConfig = sistema[chaveSelo] || { nome: chaveSelo, icone: 'fa-certificate' };
+      const estaAtivo = selosSelecionados.includes(chaveSelo);
+
       return `
-        <button type="button" class="badge-chip ${estaAtivo ? 'active' : ''}" onclick="window.alternarSeloVerificado('${sanitizarAtributoInput(selo)}')">
-          <i class="fa-solid ${estaAtivo ? 'fa-circle-check' : 'fa-circle'}"></i> ${selo}
+        <button type="button" class="badge-chip ${estaAtivo ? 'active' : ''}" onclick="window.alternarSeloVerificado('${sanitizarAtributoInput(chaveSelo)}')">
+          <i class="${badgeConfig.icone}"></i> ${badgeConfig.nome}
         </button>
       `;
     }).join('');
+
+    // Atualiza o preview dinâmico chamando o módulo oficial
+    if (previewContainer && typeof window.obterHtmlBadgesUsuario === 'function') {
+      previewContainer.innerHTML = window.obterHtmlBadgesUsuario(selosSelecionados);
+    }
   }
 
-  function alternarSeloVerificado(selo) {
-    if (!selosAutorizadosUsuario.includes(selo)) {
+  function alternarSeloVerificado(chaveSelo) {
+    if (!selosAutorizadosUsuario.includes(chaveSelo)) {
       mostrarToastEdit("Selo não autorizado para este perfil.", "alerta");
       return;
     }
 
-    if (selosSelecionados.includes(selo)) {
-      selosSelecionados = selosSelecionados.filter(s => s !== selo);
+    if (selosSelecionados.includes(chaveSelo)) {
+      selosSelecionados = selosSelecionados.filter(s => s !== chaveSelo);
     } else {
-      selosSelecionados.push(selo);
+      selosSelecionados.push(chaveSelo);
     }
 
     marcarAlteracaoPendente();
@@ -354,7 +381,6 @@
           </button>
         </div>
 
-        <!-- Banner Box -->
         <div class="media-card-box" id="drop-area-banner">
           <div class="media-card-label"><i class="fa-solid fa-image"></i> Banner de Capa</div>
           <div class="source-tabs">
@@ -380,7 +406,6 @@
           </div>
         </div>
 
-        <!-- Avatar & Moldura Box -->
         <div class="media-card-box" id="drop-area-avatar">
           <div class="media-card-label"><i class="fa-solid fa-user-gear"></i> Avatar & Moldura</div>
           <div class="source-tabs">
@@ -410,7 +435,6 @@
           </div>
         </div>
 
-        <!-- Moldura Section -->
         <div class="media-card-box">
           <div class="media-card-label"><i class="fa-solid fa-circle-notch"></i> Moldura de Perfil (Png/Gif Transparente)</div>
           <div class="source-tabs">
@@ -429,7 +453,6 @@
           </div>
         </div>
 
-        <!-- Status Principal Integrado -->
         <div class="edit-form-group">
           <label>Status de Presença</label>
           <div class="select-custom-wrapper">
@@ -442,7 +465,6 @@
           </div>
         </div>
 
-        <!-- Recado / Status Personalizado -->
         <div class="edit-form-group">
           <label>Recado do Perfil</label>
           <div class="status-custom-row">
@@ -451,13 +473,11 @@
           </div>
         </div>
 
-        <!-- Nome de Exibição -->
         <div class="edit-form-group">
           <label>Nome de Exibição</label>
           <input type="text" id="edit-display-name" value="${sanitizarAtributoInput(usuario.display_name || usuario.nome || '')}" placeholder="Seu apelido público" />
         </div>
 
-        <!-- Username / Handle -->
         <div class="edit-form-group">
           <label>
             Nome de Usuário (@handle)
@@ -466,16 +486,18 @@
           <input type="text" id="edit-username" value="${sanitizarAtributoInput(usuario.username || '')}" placeholder="seu_usuario" ${!checkUsername.permitido ? 'disabled' : ''} />
         </div>
 
-        <!-- Verificados / Selos -->
         <div class="edit-form-group">
           <label>
             Selos de Verificado
             <span class="permission-notice"><i class="fa-solid fa-shield-halved"></i> Apenas selos concedidos</span>
           </label>
           <div id="container-verificados-chips" class="badges-chips-wrapper"></div>
+          <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+            <small style="color: #aaa;">Pré-visualização:</small>
+            <div id="container-verificados-preview"></div>
+          </div>
         </div>
 
-        <!-- Tags de Perfil -->
         <div class="edit-form-group">
           <label>
             Tags de Perfil
@@ -484,13 +506,11 @@
           <input type="text" id="edit-tags" value="${sanitizarAtributoInput(usuario.tags || '')}" placeholder="Gamer | Anime | Developer | Music" ${!temPermissaoTags ? 'disabled' : ''} />
         </div>
 
-        <!-- Sobre Mim -->
         <div class="edit-form-group">
           <label>Sobre Mim | Biografia</label>
           <textarea id="edit-sobre" placeholder="Escreva uma breve apresentação...">${sanitizarTextoArea(usuario.sobre)}</textarea>
         </div>
 
-        <!-- Botões de Ação -->
         <div class="edit-btns-row">
           <button type="button" class="btn-cancelar-edit" onclick="window.solicitarFecharModal()">
             <i class="fa-solid fa-xmark"></i> Cancelar
@@ -740,7 +760,8 @@
       };
 
       if (possuiPermissaoTags(usuario)) {
-        payload.tags = processarEntradaFormatada(extrairListaItens(novasTagsRaw));
+        const listaTags = extrairListaItens(novasTagsRaw);
+        payload.tags = listaTags.length > 0 ? listaTags.join(' | ') : null;
       }
 
       if (novoUsername && novoUsername !== usuario.username) {

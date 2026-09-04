@@ -1,6 +1,6 @@
 // ==========================================================================
 // MÓDULO HOMECARD & PAINEL DE MEMBROS DA COMUNIDADE (homecard.js)
-// Project Z Enhanced v5.0 | Integração Nativa status.js (int8) & Realtime CDC
+// Sphere v5.2 | Integração Nativa status.js (int8), verificados.js & Realtime CDC
 // ==========================================================================
 
 let inscricaoRealtimeUsuarios = null;
@@ -63,6 +63,38 @@ function renderizarBadgeStatusHomecard(usuarioId, statusAtual) {
   return `<div class="avatar-status-badge">${htmlDot}</div>`;
 }
 
+/**
+ * Renderização de Badges e Verificados integrada ao verificados.js
+ */
+function renderizarBadgesVerificadosHomecard(usuario) {
+  if (!usuario) return '';
+
+  let listaBadges = [];
+  if (usuario.verificados) {
+    if (Array.isArray(usuario.verificados)) {
+      listaBadges = [...usuario.verificados];
+    } else if (typeof usuario.verificados === 'string') {
+      listaBadges = usuario.verificados.split(/[,|]/).map(s => s.trim().toLowerCase());
+    }
+  }
+
+  if ((usuario.is_creator || usuario.is_criador) && !listaBadges.includes('creator')) {
+    listaBadges.unshift('creator');
+  }
+
+  if (usuario.is_verified && !listaBadges.includes('verified')) {
+    listaBadges.push('verified');
+  }
+
+  if (listaBadges.length === 0) return '';
+
+  if (typeof window.obterHtmlBadgesUsuario === 'function') {
+    return window.obterHtmlBadgesUsuario(listaBadges);
+  }
+
+  return '';
+}
+
 // Renderizador Principal do Container Homecard
 async function renderHomeCard(usuario) {
   const user = usuario || obterUsuarioLocalHomecard();
@@ -83,7 +115,7 @@ async function renderHomeCard(usuario) {
   const molduraSrc = (user.moldura_url && user.moldura_url.trim() !== '') ? user.moldura_url : '';
 
   const eCriador = Boolean(user.is_creator || user.is_criador);
-  const htmlTag = typeof window.obterHtmlTag === 'function' ? window.obterHtmlTag(user) : '';
+  const htmlBadgesUser = renderizarBadgesVerificadosHomecard(user);
   const htmlStatusBadge = renderizarBadgeStatusHomecard(user.id, user.status || 'offline');
 
   const customStatusText = typeof window.obterHtmlCustomStatus === 'function' && user.custom_status
@@ -121,9 +153,11 @@ async function renderHomeCard(usuario) {
         ${customStatusText}
       </div>
       <div class="card-main-row">
-        <span class="card-display-name">${displayNameText}</span>
+        <div class="card-display-name-group">
+          <span class="card-display-name">${displayNameText}</span>
+          ${htmlBadgesUser}
+        </div>
         <span class="card-username">@${usernameText}</span>
-        ${htmlTag}
       </div>
     </div>
     <button class="card-edit-quick-btn" id="btn-quick-edit-profile" title="Editar Perfil">
@@ -245,7 +279,7 @@ async function carregarEIniciarRealtimeUsuarios(usuarioLogadoId) {
         const molduraSrc = (u.moldura_url && u.moldura_url.trim() !== '') ? u.moldura_url : '';
 
         const htmlStatus = renderizarBadgeStatusHomecard(u.id, u.status || 'offline');
-        const htmlTag = typeof window.obterHtmlTag === 'function' ? window.obterHtmlTag(u) : '';
+        const htmlBadgesMember = renderizarBadgesVerificadosHomecard(u);
 
         const customStatusHtml = typeof window.obterHtmlCustomStatus === 'function' && u.custom_status
           ? window.obterHtmlCustomStatus(u.custom_status, u.status_emoji || '💬')
@@ -277,12 +311,12 @@ async function carregarEIniciarRealtimeUsuarios(usuarioLogadoId) {
           <div class="server-user-info">
             <div class="server-user-names-row">
               <span class="server-user-display-name">${displayNameClean}</span>
+              ${htmlBadgesMember}
               <span class="server-user-handle">@${usernameClean}</span>
             </div>
             ${customStatusHtml}
             <div class="server-user-tag-row">
               ${eUsuarioLogado ? '<span class="badge-you">Você</span>' : ''}
-              ${htmlTag}
             </div>
           </div>
           ${chatBtnHtml}
@@ -350,11 +384,16 @@ function removerHomeCard() {
   const wrapper = document.getElementById('homecard-wrapper-container');
   if (wrapper) wrapper.remove();
 
-  const sb = obterSupabaseHomecard();
+  const sb = obtainingSupabaseHomecard();
   if (inscricaoRealtimeUsuarios && sb) {
     sb.removeChannel(inscricaoRealtimeUsuarios);
     inscricaoRealtimeUsuarios = null;
   }
+}
+
+// Helper seguro em escopo
+function obtainingSupabaseHomecard() {
+  return obterSupabaseHomecard();
 }
 
 // Exportações Globais
