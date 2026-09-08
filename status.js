@@ -1,15 +1,15 @@
 // ==========================================================================
 // MÓDULO DE STATUS E PRESENÇA EM TEMPO REAL (status.js) - SPHERE PRO v5.2
-// Realtime Database Engine | Zero Ghost Users | Int8 Compatible
+// Realtime Database Engine | Zero Ghost Users | Int8 & Schema Sync
 // ==========================================================================
 
 (function () {
   'use strict';
 
   const CONFIG = {
-    LIMITE_INATIVIDADE_MS: 2 * 60 * 1000,   // 2 minutos de inatividade ativa -> Ausente
-    INTERVALO_VERIFICACAO_MS: 12 * 1000,    // Checagem de inatividade local
-    THROTTLE_UPDATE_MS: 4 * 1000,           // Mínimo de tempo entre requisições de UPDATE
+    LIMITE_INATIVIDADE_MS: 2 * 60 * 1000,   // 2 minutos de inatividade -> Ausente
+    INTERVALO_VERIFICACAO_MS: 10 * 1000,    // Checagem local de inatividade
+    THROTTLE_UPDATE_MS: 3 * 1000,           // Mínimo de tempo entre requisições de UPDATE
     CHANNEL_PRESENCE: 'realtime_presence_v5.2',
     CHANNEL_DB: 'public_status_updates_v5.2'
   };
@@ -26,7 +26,7 @@
     isManual: false
   };
 
-  // Injeção de CSS Dinâmico para os Pontos de Status e Tags
+  // Injeção de CSS Dinâmico com suporte a Estilos Glass e Tags de Cargos
   (function injetarEstilosStatus() {
     if (document.getElementById('status-css-v5')) return;
 
@@ -92,7 +92,7 @@
       .custom-status-text {
         font-size: 0.75rem; 
         color: #b3a5b8; 
-        display: flex; 
+        display: inline-flex; 
         align-items: center; 
         gap: 5px;
         max-width: 160px; 
@@ -104,12 +104,13 @@
       .custom-status-emoji { 
         font-style: normal; 
         font-size: 0.88rem; 
+        line-height: 1;
       }
 
       .user-tag {
         font-size: 0.62rem; 
         font-weight: 800; 
-        padding: 2px 6px; 
+        padding: 2px 7px; 
         border-radius: 6px;
         display: inline-flex; 
         align-items: center; 
@@ -118,12 +119,13 @@
         letter-spacing: 0.4px; 
         line-height: 1; 
         user-select: none;
+        white-space: nowrap;
       }
-      .user-tag.creator { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; }
-      .user-tag.admin { background: linear-gradient(135deg, #ff2d55, #e02448); color: #fff; }
-      .user-tag.mod { background: #00d2ff; color: #000; }
-      .user-tag.vip { background: linear-gradient(135deg, #a55eea, #8854d0); color: #fff; }
-      .user-tag.member { background: rgba(255, 255, 255, 0.08); color: #b3a5b8; }
+      .user-tag.creator { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; box-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
+      .user-tag.admin { background: linear-gradient(135deg, #ff2d55, #e02448); color: #fff; box-shadow: 0 0 8px rgba(255, 45, 85, 0.4); }
+      .user-tag.mod { background: #00d2ff; color: #000; box-shadow: 0 0 8px rgba(0, 210, 255, 0.3); }
+      .user-tag.vip { background: linear-gradient(135deg, #a55eea, #8854d0); color: #fff; box-shadow: 0 0 8px rgba(165, 94, 234, 0.4); }
+      .user-tag.member { background: rgba(255, 255, 255, 0.08); color: #b3a5b8; border: 1px solid rgba(255, 255, 255, 0.05); }
 
       .avatar-status-badge { 
         position: absolute; 
@@ -178,25 +180,41 @@
     return `<span class="status-dot ${info.classe}" ${idAttr} data-status-indicator="${info.classe}" title="${info.label}"></span>`;
   }
 
-  function obterHtmlCustomStatus(frase, emoji = '💬') {
-    if (!frase || frase.trim() === '') return '';
-    const fraseLimpa = String(frase)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-    return `<div class="custom-status-text" title="${fraseLimpa}"><i class="custom-status-emoji">${emoji}</i><span>${fraseLimpa}</span></div>`;
+  function obterHtmlCustomStatus(frase = '', emoji = '') {
+    const temFrase = typeof frase === 'string' && frase.trim() !== '';
+    const temEmoji = typeof emoji === 'string' && emoji.trim() !== '';
+
+    if (!temFrase && !temEmoji) return '';
+
+    const fraseLimpa = temFrase
+      ? String(frase).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      : '';
+
+    const emojiHtml = temEmoji ? `<i class="custom-status-emoji">${emoji.trim()}</i>` : '';
+    const textoHtml = temFrase ? `<span>${fraseLimpa}</span>` : '';
+
+    return `<div class="custom-status-text" title="${fraseLimpa || 'Recado'}">${emojiHtml}${textoHtml}</div>`;
   }
 
+  // Renderiza a Tag de Cargo baseada nas colunas reais da tabela 'usuarios'
   function obterHtmlTag(usuario) {
     if (!usuario) return `<span class="user-tag member">Membro</span>`;
-    if (usuario.is_creator || usuario.is_criador) return `<span class="user-tag creator"><i class="fa-solid fa-crown"></i> Criador</span>`;
-    if (usuario.role === 'admin' || usuario.is_admin) return `<span class="user-tag admin"><i class="fa-solid fa-shield-cat"></i> Admin</span>`;
-    if (usuario.role === 'mod' || usuario.is_mod) return `<span class="user-tag mod"><i class="fa-solid fa-shield-halved"></i> Mod</span>`;
-    if (usuario.is_vip || usuario.vip) return `<span class="user-tag vip"><i class="fa-solid fa-gem"></i> VIP</span>`;
+    
+    const eCriador = Boolean(usuario.is_creator || usuario.is_criador);
+    if (eCriador) return `<span class="user-tag creator"><i class="fa-solid fa-crown"></i> Criador</span>`;
+
+    const eAdmin = Boolean(usuario.is_admin || usuario.role === 'admin');
+    if (eAdmin) return `<span class="user-tag admin"><i class="fa-solid fa-shield-cat"></i> Admin</span>`;
+
+    const eMod = Boolean(usuario.is_mod || usuario.role === 'mod');
+    if (eMod) return `<span class="user-tag mod"><i class="fa-solid fa-shield-halved"></i> Mod</span>`;
+
+    const eVip = Boolean(usuario.is_vip || usuario.vip);
+    if (eVip) return `<span class="user-tag vip"><i class="fa-solid fa-gem"></i> VIP</span>`;
+
     return `<span class="user-tag member">Membro</span>`;
   }
 
-  // Atualiza no DOM todos os pontos de status associados a um determinado ID
   function notificarInterfaceStatus(userId, novoStatus) {
     if (userId === null || userId === undefined) return;
     const info = obterInfoStatus(novoStatus);
@@ -210,7 +228,6 @@
     });
   }
 
-  // Sincronização e envio de status ao banco com controle de Throttling
   async function atualizarStatusServidor(novoStatus, forcarManual = false) {
     const userId = estadoMemoria.userId || obterIdUsuarioLogado();
     if (!userId) return;
@@ -249,7 +266,6 @@
     }
   }
 
-  // Inicialização e gerenciamento dos canais de Presença e DB Realtime
   async function iniciarMotorPresenca() {
     const userId = obterIdUsuarioLogado();
     if (!userId) return;
@@ -349,6 +365,14 @@
 
     ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'].forEach((evt) => {
       window.addEventListener(evt, registrarAtividade, { passive: true });
+    });
+
+    window.addEventListener('online', () => {
+      if (!estadoMemoria.isManual) atualizarStatusServidor('online', false);
+    });
+
+    window.addEventListener('offline', () => {
+      atualizarStatusServidor('offline', true);
     });
 
     document.addEventListener('visibilitychange', () => {

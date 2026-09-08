@@ -1,256 +1,183 @@
 /* ==========================================================================
-   PERFIL CSS - DESIGN Z-STYLE ENHANCED (SPHERE PRO v5.2)
-   Design fluido, responsivo e integrado ao Project Z / Discord Visual
+   PERFIL CSS - DESIGN SYSTEM Z-STYLE ENHANCED (SPHERE PRO v5.2)
+   Design Fluido, Glassmorphic, Totalmente Sincronizado com editarperfil.css
    ========================================================================== */
 
-/* --------------------------------------------------------------------------
-   1. KEYFRAMES & ANIMAÇÕES
-   -------------------------------------------------------------------------- */
-@keyframes fadeInPerfil {
-  from { 
-    opacity: 0; 
-    transform: translateY(10px) scale(0.98); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0) scale(1); 
-  }
+:root {
+  --edit-bg-main: #0c0612;
+  --edit-bg-card: #150a1e;
+  --edit-bg-input: rgba(255, 255, 255, 0.04);
+  --edit-border-color: rgba(255, 255, 255, 0.08);
+  --edit-text-primary: #ffffff;
+  --edit-text-secondary: #b3a5b8;
+  --edit-accent-default: #ff2d55;
+  --user-theme-color: #ff2d55;
+  --user-theme-gradient: linear-gradient(135deg, #ff2d55, #ff7675);
 }
 
-@keyframes pulsePerfilGlow {
-  0%, 100% { box-shadow: 0 0 15px rgba(255, 45, 85, 0.2); }
-  50% { box-shadow: 0 0 30px rgba(255, 45, 85, 0.45); }
+@keyframes fadeInPerfil {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes popModalRecado {
-  from { opacity: 0; transform: scale(0.92); }
+  from { opacity: 0; transform: scale(0.90); }
   to { opacity: 1; transform: scale(1); }
 }
 
 /* --------------------------------------------------------------------------
-   2. OVERLAY GLOBAL & CAMADAS DE NAVEGAÇÃO
+   OVERLAY GLOBAL
    -------------------------------------------------------------------------- */
 .perfil-full-container {
   position: fixed;
-  inset: 0; /* Cobre todo o topo e extremidades da tela */
-  background: rgba(8, 4, 12, 0.90);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  z-index: 500; /* Integração perfeita sem esconder navegações globais */
+  inset: 0;
+  background: rgba(5, 2, 8, 0.88);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  z-index: 500;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 12px 12px 110px 12px; /* Margem inferior para a navbar de components.js */
+  padding: 20px 14px 110px 14px;
   box-sizing: border-box;
-  animation: fadeInPerfil 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: fadeInPerfil 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .perfil-full-container::-webkit-scrollbar {
   width: 5px;
 }
+
 .perfil-full-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 45, 85, 0.4);
+  background: var(--user-theme-color, var(--edit-accent-default));
   border-radius: 10px;
-}
-.perfil-full-container::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 /* --------------------------------------------------------------------------
-   3. CARD PRINCIPAL & BOTÃO DE FECHAR / VOLTAR (32px)
+   CARD PRINCIPAL
    -------------------------------------------------------------------------- */
+.profile-card-preview-wrapper,
 .perfil-content-wrapper {
   width: 100%;
   max-width: 620px;
-  background: #140b17;
-  border: 1px solid rgba(255, 45, 85, 0.22);
-  border-radius: 28px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(255, 45, 85, 0.12);
+  background-color: #140b17;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--user-theme-border, rgba(255, 45, 85, 0.35));
+  border-radius: 22px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 0 0 25px var(--user-theme-glow, rgba(255, 45, 85, 0.18));
   position: relative;
   display: flex;
   flex-direction: column;
   margin: 0 auto 30px auto;
   box-sizing: border-box;
   overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Botão Fechar / Voltar Padronizado para 32px */
+.profile-card-preview-wrapper::before,
+.perfil-content-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(11, 5, 18) 0%, rgba(9, 5, 21, 0.82) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* --------------------------------------------------------------------------
+   BOTÃO FECHAR / VOLTAR
+   -------------------------------------------------------------------------- */
 .btn-fechar-perfil {
   position: absolute;
   top: 14px;
   left: 14px;
   z-index: 35;
-  background: rgba(14, 7, 18, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #ffffff;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   transition: all 0.2s ease;
   padding: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .btn-fechar-perfil:hover {
-  background: #ff2d55;
-  border-color: #ff2d55;
-  transform: scale(1.08);
+  background: var(--user-theme-color, var(--edit-accent-default));
+  border-color: var(--user-theme-color, var(--edit-accent-default));
+  transform: rotate(90deg) scale(1.08);
+  box-shadow: 0 0 12px var(--user-theme-glow, rgba(255, 45, 85, 0.5));
 }
 
 /* --------------------------------------------------------------------------
-   4. BANNER EM ESFERA / ARCO CURVADO & BOTÕES DE BANNER (32px)
+   BANNER
    -------------------------------------------------------------------------- */
+.profile-preview-banner,
 .perfil-banner {
   width: 100%;
-  height: 200px;
+  height: 160px;
   background-size: cover;
   background-position: center;
-  position: relative;
   background-color: #201026;
-  border-bottom-left-radius: 50% 16% !important;
-  border-bottom-right-radius: 50% 16% !important;
-  overflow: hidden;
+  border-bottom-left-radius: 50% 14%;
+  border-bottom-right-radius: 50% 14%;
+  position: relative;
+  z-index: 2;
 }
 
 .perfil-banner-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2) 0%, rgba(20, 11, 23, 0.8) 100%);
-}
-
-/* Botão Editar Banner Padronizado para 32px de Altura */
-.btn-editar-banner {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 20;
-  background: rgba(14, 7, 18, 0.72);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  height: 32px;
-  min-height: 32px;
-  padding: 0 14px;
-  border-radius: 20px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-}
-
-.btn-editar-banner:hover {
-  background: #ff2d55;
-  border-color: #ff2d55;
-  box-shadow: 0 4px 15px rgba(255, 45, 85, 0.4);
-}
-
-/* RECADO / STATUS CUSTOMIZADO FLUTUANTE (Canto Superior Direito do Arco) */
-.perfil-custom-status-banner {
-  position: absolute;
-  bottom: 20px;
-  right: 18px;
-  z-index: 25;
-  font-size: 0.8rem;
-  color: #ffffff;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(18, 9, 22, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  height: 32px;
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 20px;
-  max-width: 180px;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.perfil-custom-status-banner:empty {
-  display: none !important;
-}
-
-.perfil-custom-status-banner:hover {
-  background: rgba(255, 45, 85, 0.25);
-  border-color: #ff2d55;
-  transform: translateY(-2px);
-}
-
-.perfil-custom-status-banner .custom-status-emoji {
-  font-size: 1rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.perfil-custom-status-banner .custom-status-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.76rem;
-  color: #e2d8e5;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.25) 0%, rgba(20, 11, 23, 0.82) 100%);
 }
 
 /* --------------------------------------------------------------------------
-   5. CABEÇALHO CENTRALIZADO & AVATAR
+   AVATAR, MOLDURA & POSICIONAMENTO DA BOLINHA DE STATUS
    -------------------------------------------------------------------------- */
+.profile-preview-header,
 .perfil-header {
-  padding: 0 20px 24px 20px;
-  margin-top: -65px; /* Puxa o avatar exatamente ao centro da curva do banner */
-  position: relative;
-  z-index: 10;
+  padding: 0 18px 12px 18px;
+  margin-top: -50px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  text-align: center;
+  position: relative;
+  z-index: 3;
 }
 
+.profile-preview-avatar-box,
 .perfil-avatar-wrapper {
-  position: relative;
+  position: relative !important;
+  width: 90px;
+  height: 90px;
+  margin-bottom: 8px;
   display: inline-block;
-  margin-bottom: 12px;
 }
 
-.perfil-avatar-container {
-  position: relative;
-  width: 112px;
-  height: 112px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
+.preview-avatar,
 .perfil-avatar {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 4px solid #140b17;
+  border: 3.5px solid var(--user-theme-color, #ff2d55);
   object-fit: cover;
   background: #140b17;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75);
   display: block;
   box-sizing: border-box;
 }
 
+.preview-moldura,
 .perfil-moldura {
   position: absolute;
   top: -14%;
@@ -258,42 +185,39 @@
   width: 128%;
   height: 128%;
   pointer-events: none;
-  z-index: 4;
+  z-index: 3;
   object-fit: contain;
 }
 
-/* Indicador de Presença Realtime */
-.perfil-avatar-container .avatar-status-badge {
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ANCORAGEM FIXA DA BOLINHA DE STATUS DO STATUS.JS */
+.avatar-status-badge {
+  position: absolute !important;
+  bottom: 2px !important;
+  right: 2px !important;
+  z-index: 10 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: none;
 }
 
-.perfil-avatar-container .avatar-status-badge .status-dot,
-.perfil-avatar-container .avatar-status-badge .status-dot-default {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 3.5px solid #140b17;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-  box-sizing: border-box;
+.avatar-status-badge .status-dot {
+  width: 18px !important;
+  height: 18px !important;
+  border: 3px solid #140b17 !important;
 }
 
 /* --------------------------------------------------------------------------
-   6. NOMES DE EXIBIÇÃO & NOMES DE USUÁRIO (@USERNAME)
+   NOMES, HANDLES & BADGES
    -------------------------------------------------------------------------- */
+.profile-preview-main-info,
 .perfil-names-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
-  margin-bottom: 16px;
 }
 
 .perfil-display-row {
@@ -304,24 +228,27 @@
   flex-wrap: wrap;
 }
 
+.profile-preview-main-info h3,
 .perfil-display-name {
-  font-size: 1.45rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: #ffffff;
-  letter-spacing: -0.2px;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
 .perfil-handle-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
 }
 
+.preview-username,
 .perfil-handle-username {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.7);
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.55);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -329,14 +256,14 @@
   transition: color 0.2s ease;
 }
 
+.preview-username:hover,
 .perfil-handle-username:hover {
-  color: #ff2d55;
+  color: #ffffff;
 }
 
-/* Botão Compartilhar Ajustado */
 .btn-compartilhar-perfil {
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: #ffffff;
   height: 26px;
   padding: 0 10px;
@@ -351,40 +278,124 @@
 }
 
 .btn-compartilhar-perfil:hover {
-  background: #ff2d55;
-  border-color: #ff2d55;
+  background: var(--user-theme-color, #ff2d55);
+  border-color: var(--user-theme-color, #ff2d55);
+}
+
+.preview-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* --------------------------------------------------------------------------
+   BUBBLE DE STATUS CUSTOMIZADO
+   -------------------------------------------------------------------------- */
+.preview-status-bubble {
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  margin-bottom: 6px;
+  transition: all 0.2s ease;
+}
+
+.preview-status-bubble:hover {
+  border-color: var(--user-theme-color, #ff2d55);
   transform: translateY(-1px);
 }
 
 /* --------------------------------------------------------------------------
-   7. METADADOS E CARDS DE ESTATÍSTICAS SOCIAIS
+   AÇÕES SOCIAIS
    -------------------------------------------------------------------------- */
-.perfil-meta-info {
+.perfil-social-actions-group {
   display: flex;
   align-items: center;
-  justify-content: space-around;
-  font-size: 0.74rem;
-  color: rgba(255, 255, 255, 0.45);
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 10px 14px;
-  border-radius: 14px;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.btn-perfil-action {
+  flex: 1;
+  min-width: 110px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  height: 36px;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  transition: all 0.22s ease;
+}
+
+.btn-perfil-action:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.btn-perfil-action.btn-editar-perfil-main {
+  background: var(--user-theme-gradient, linear-gradient(135deg, #ff2d55, #ff7675));
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 4px 14px var(--user-theme-glow, rgba(255, 45, 85, 0.4));
+}
+
+.btn-perfil-action.active {
+  background: var(--user-theme-color, #ff2d55);
+  border-color: var(--user-theme-color, #ff2d55);
+  color: #ffffff;
+}
+
+/* --------------------------------------------------------------------------
+   METADADOS, ESTATÍSTICAS & TAGS
+   -------------------------------------------------------------------------- */
+.profile-preview-details {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  position: relative;
+  z-index: 3;
   width: 100%;
   box-sizing: border-box;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
-.perfil-meta-item {
+.preview-meta-grid {
   display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.perfil-meta-item.clickable:hover {
-  color: #ff2d55;
-  cursor: pointer;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  font-size: 0.75rem;
+  color: var(--edit-text-secondary);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .perfil-stats-bar {
@@ -392,26 +403,25 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   width: 100%;
-  margin-bottom: 20px;
+  margin-top: 4px;
 }
 
 .stat-item {
-  background: rgba(0, 0, 0, 0.32);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 18px;
-  padding: 12px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 10px 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   cursor: pointer;
-  transition: all 0.22s ease;
+  transition: all 0.2s ease;
 }
 
 .stat-item:hover {
-  background: rgba(255, 45, 85, 0.1);
-  border-color: rgba(255, 45, 85, 0.35);
-  transform: translateY(-2px);
+  border-color: var(--user-theme-color, #ff2d55);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .stat-value {
@@ -423,259 +433,92 @@
 .stat-label {
   font-size: 0.68rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--edit-text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.6px;
 }
 
-/* --------------------------------------------------------------------------
-   8. BIOGRAFIA & TAGS
-   -------------------------------------------------------------------------- */
-.perfil-tags-container {
+.preview-bio {
+  font-size: 0.85rem;
+  color: #e2d8e5;
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre-line;
+  word-break: break-word;
+  width: 100%;
+}
+
+.preview-tags-container {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 6px;
-  margin-bottom: 18px;
   width: 100%;
 }
 
-.perfil-tag-chip {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #d1c2d6;
-  font-size: 0.74rem;
-  font-weight: 600;
-  padding: 4px 12px;
-  border-radius: 14px;
-}
-
-.perfil-bio-section {
-  width: 100%;
-  padding: 18px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.28);
-  box-sizing: border-box;
-  margin-bottom: 20px;
-}
-
-.perfil-bio-title {
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: #ff2d55;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.perfil-bio-text {
-  font-size: 0.9rem;
-  color: #e2d8e5;
-  line-height: 1.6;
-  white-space: pre-line;
-  word-break: break-word;
-}
-
-.perfil-bio-empty {
-  font-style: italic;
-  color: #666666;
+.profile-tag-pill {
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  background: var(--user-theme-gradient, linear-gradient(135deg, #ff2d55, #ff7675));
+  color: #ffffff;
+  box-shadow: 0 2px 8px var(--user-theme-glow, rgba(255, 45, 85, 0.25));
 }
 
 /* --------------------------------------------------------------------------
-   9. AÇÕES SOCIAIS COM ALTURA PADRONIZADA PARA 32px
-   -------------------------------------------------------------------------- */
-.perfil-social-actions-group {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  margin-top: 4px;
-}
-
-.btn-perfil-action {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  height: 32px; /* Padronizado para 32px exatos */
-  min-height: 32px;
-  padding: 0 14px;
-  border-radius: 18px;
-  font-size: 0.82rem;
-  font-weight: 800;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-sizing: border-box;
-}
-
-.btn-perfil-action:hover:not(:disabled) {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.btn-perfil-action.highlight {
-  background: #ff2d55;
-  border-color: #ff2d55;
-  color: #ffffff;
-  box-shadow: 0 4px 16px rgba(255, 45, 85, 0.38);
-}
-
-.btn-perfil-action.highlight:hover {
-  background: #e02447;
-}
-
-.btn-perfil-action.active {
-  background: rgba(255, 45, 85, 0.18);
-  border-color: #ff2d55;
-  color: #ff2d55;
-}
-
-/* --------------------------------------------------------------------------
-   10. MODAL DE RECADO COMPLETO (32px NO BOTÃO FECHAR)
+   MODAL RECADO
    -------------------------------------------------------------------------- */
 .perfil-modal-recado-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(8, 4, 12, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(5, 2, 8, 0.88);
+  backdrop-filter: blur(28px);
   z-index: 2500;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  animation: popModalRecado 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .perfil-modal-recado-card {
   width: 100%;
-  max-width: 380px;
-  background: #180e1b;
-  border: 1px solid rgba(255, 45, 85, 0.35);
-  border-radius: 24px;
-  padding: 22px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
-  animation: popModalRecado 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 400px;
+  background: var(--edit-bg-card);
+  border: 1px solid var(--user-theme-border, rgba(255, 45, 85, 0.3));
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
 }
 
-.perfil-modal-recado-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.recado-emoji-large {
-  font-size: 2rem;
-}
-
-/* Botão Fechar Modal Recado Padronizado para 32px */
-.btn-fechar-recado {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: #ffffff;
-  
-  /* Força a dimensão exata em 32px */
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-  min-height: 32px !important;
-  max-width: 32px !important;
-  max-height: 32px !important;
-  flex-shrink: 0; /* Impede que o botão encolha se estiver dentro de um container Flexbox */
-  box-sizing: border-box;
-  padding: 0;
-  
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s ease, transform 0.1s ease;
-}
-
-.btn-fechar-recado:hover {
-  background: rgba(255, 56, 56, 0.8);
-}
-
-.btn-fechar-recado:active {
-  transform: scale(0.95);
-}
-
-.perfil-modal-recado-body p {
-  color: #ffffff;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  white-space: pre-line;
-  word-break: break-word;
-}
-
-
-/* Toast Notification */
 .perfil-toast-message {
   position: fixed;
-  bottom: 80px;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: #ff2d55;
+  background: rgba(20, 11, 23, 0.95);
+  border: 1px solid var(--user-theme-color, #ff2d55);
   color: #ffffff;
-  padding: 10px 22px;
+  padding: 10px 18px;
   border-radius: 20px;
   font-size: 0.82rem;
-  font-weight: 800;
-  z-index: 3000;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
+  font-weight: 700;
   display: flex;
   align-items: center;
   gap: 8px;
+  z-index: 9999;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(12px);
 }
 
-/* --------------------------------------------------------------------------
-   11. ADAPTAÇÕES RESPONSIVAS (MOBILE VS DESKTOP)
-   -------------------------------------------------------------------------- */
-@media (max-width: 768px) {
+@media (max-width: 580px) {
   .perfil-full-container {
-    padding: 0 0 95px 0;
+    padding: 0 0 90px 0;
   }
-
+  .profile-card-preview-wrapper,
   .perfil-content-wrapper {
     border-radius: 0;
     border: none;
     min-height: 100vh;
-    margin-bottom: 0;
-  }
-
-  .perfil-banner {
-    height: 170px;
-    border-bottom-left-radius: 50% 16% !important;
-    border-bottom-right-radius: 50% 16% !important;
-  }
-
-  .perfil-header {
-    margin-top: -55px;
-    padding: 0 16px 20px 16px;
-  }
-
-  .perfil-avatar-container {
-    width: 96px;
-    height: 96px;
-  }
-
-  .perfil-social-actions-group {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .btn-perfil-action {
-    width: 100%;
   }
 }

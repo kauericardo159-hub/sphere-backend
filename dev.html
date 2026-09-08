@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Central de Moderação & Gestão Dev - Sphere Pro</title>
+  <title>Central de Moderação & Gestão Dev - Sphere Pro v5.2</title>
   
   <!-- Prevenção Rigorosa de Cache -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -13,13 +13,14 @@
   <!-- Google Fonts & FontAwesome 6 Pro -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
   
   <!-- Supabase JS Client v2 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Módulo Oficial de Verificados -->
+  <!-- Módulos de Status e Verificados -->
+  <script defer src="status.js?v=5.2.0"></script>
   <script defer src="verificados.js?v=5.2.0"></script>
 
   <!-- Folha de Estilo Exclusiva do Painel Dev -->
@@ -29,9 +30,7 @@
 
   <div class="dev-container">
 
-    <!-- ========================================================================== -->
-    <!-- TELA DE ACESSO NEGADO (Para Usuários Sem Permissão / Visitantes) -->
-    <!-- ========================================================================== -->
+    <!-- TELA DE ACESSO NEGADO -->
     <div id="access-denied-screen" class="dev-access-denied" style="display: none;">
       <div class="lock-card">
         <div class="lock-icon-wrapper">
@@ -48,9 +47,7 @@
       </div>
     </div>
 
-    <!-- ========================================================================== -->
     <!-- APLICAÇÃO PRINCIPAL DO PAINEL DEV -->
-    <!-- ========================================================================== -->
     <div id="dev-app-content" style="display: none;">
       
       <!-- Cabeçalho Principal com Identificação do Operador -->
@@ -78,13 +75,18 @@
             </div>
             <span id="operator-username" class="operator-handle">@usuario</span>
           </div>
-          <a href="index.html" class="btn-header-home" title="Ir ao site principal">
-            <i class="fa-solid fa-house"></i>
-          </a>
+          <div class="operator-actions">
+            <a href="servidor.html" class="btn-header-home" title="Acessar Infraestrutura / Servidor">
+              <i class="fa-solid fa-server"></i>
+            </a>
+            <a href="index.html" class="btn-header-home" title="Ir ao site principal">
+              <i class="fa-solid fa-house"></i>
+            </a>
+          </div>
         </div>
       </header>
 
-      <!-- Métricas Globais da Comunidade -->
+      <!-- Métricas Globais da Comunidade (Minipainéis Reformulados) -->
       <section class="stats-grid">
         <div class="stat-card">
           <div class="stat-icon icon-users">
@@ -311,7 +313,7 @@
     <span id="dev-toast-msg">Ação executada com sucesso!</span>
   </div>
 
-  <!-- Lógica de Controle com Conexão Realtime -->
+  <!-- Lógica de Controle com Conexão Realtime e Mapeamento Rigoroso do Banco -->
   <script>
     'use strict';
 
@@ -418,7 +420,7 @@
         const clientSupabase = obterSupabaseDev();
         if (!clientSupabase) { bloquearAcesso(); return false; }
 
-        // Consulta direta ao Supabase para verificar permissões atualizadas no banco de dados
+        // Consulta direta com mapeamento seguro de campos
         const { data: userBD, error } = await clientSupabase
           .from('usuarios')
           .select('*')
@@ -435,13 +437,12 @@
         const eCriador = Boolean(userBD.is_creator || userBD.is_criador);
         const eStaff = userBD.role === 'mod' || userBD.role === 'admin' || Boolean(userBD.is_admin) || Boolean(userBD.is_mod);
 
-        // REGRA ESTRITA: Se for usuário normal, não logado ou apenas verificado, BLOQUEIA TOTALMENTE
         if (!eCriador && !eStaff) {
           bloquearAcesso();
           return false;
         }
 
-        // Renderiza card do Operador Atual no Topo
+        // Renderiza card do Operador
         const nameEl = document.getElementById('operator-display-name');
         const handleEl = document.getElementById('operator-username');
         const avatarImg = document.getElementById('operator-avatar-img');
@@ -483,7 +484,7 @@
       document.getElementById('dev-app-content').style.display = 'none';
     }
 
-    // CARREGAMENTO DE DADOS E SINCRONIZAÇÃO AO VIVO (REALTIME)
+    // CARREGAMENTO DE DADOS E REALTIME
     async function carregarTudoDev() {
       const liberado = await verificarAcessoERenderizarOperador();
       if (!liberado) return;
@@ -496,9 +497,10 @@
         return;
       }
 
+      // Consulta sem solicitar colunas inexistentes
       const { data: usuarios, error } = await clientSupabase
         .from('usuarios')
-        .select('*')
+        .select('id, username, display_name, email, status, avatar_url, moldura_url, is_verified, role, is_creator, is_criador, is_admin, is_mod, is_vip, is_banned, nivel, sobre, verificados, tags, created_at')
         .order('id', { ascending: true });
 
       if (error || !usuarios) {
@@ -510,7 +512,6 @@
       atualizarEstatisticas(usuarios);
       filtrarEExibir();
 
-      // Ativa escuta em tempo real se ainda não configurada
       ativarInscricaoRealtimeSupabase();
     }
 
@@ -545,10 +546,14 @@
         const usernameDisplay = sanitizarHtmlDev(criadorReal.username || 'criador');
         const defaultAvatar = `https://ui-avatars.com/api/?background=ffd700&color=000&name=${encodeURIComponent(usernameDisplay)}`;
         const avatarSrc = (criadorReal.avatar_url && criadorReal.avatar_url.trim() !== '') ? criadorReal.avatar_url : defaultAvatar;
+        const molduraSrc = criadorReal.moldura_url || '';
 
         creatorBanner.innerHTML = `
           <div class="creator-info">
-            <img src="${avatarSrc}" class="creator-avatar" onerror="this.onerror=null; this.src='${defaultAvatar}';" alt="Criador">
+            <div class="operator-avatar-wrapper" style="width:48px; height:48px;">
+              <img src="${avatarSrc}" class="creator-avatar" onerror="this.onerror=null; this.src='${defaultAvatar}';" alt="Criador">
+              ${molduraSrc ? `<img src="${molduraSrc}" class="operator-moldura" style="display:block;">` : ''}
+            </div>
             <div class="creator-details">
               <h3>@${usernameDisplay} <i class="fa-solid fa-crown" style="color: #ffd700;"></i></h3>
               <p>${sanitizarHtmlDev(criadorReal.display_name || 'Criador Oficial')} • Nível ${criadorReal.nivel || 1} • Conta Imune e Protegida</p>
@@ -603,36 +608,29 @@
 
       usuarios.forEach(user => {
         const usernameDisplay = sanitizarHtmlDev(user.username || 'user');
-        const nameDisplay = sanitizarHtmlDev(user.display_name || user.nome || usernameDisplay);
+        const nameDisplay = sanitizarHtmlDev(user.display_name || usernameDisplay);
         const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(usernameDisplay)}`;
         const avatarSrc = (user.avatar_url && user.avatar_url.trim() !== '') ? user.avatar_url : defaultAvatar;
+        const molduraSrc = user.moldura_url || '';
 
         const eCriadorTarget = Boolean(user.is_creator || user.is_criador);
         const eBanido = Boolean(user.is_banned);
         const eVerificado = Boolean(user.is_verified);
         const nivelAtual = user.nivel || 1;
 
-        let htmlBadgesOficiais = '';
-        if (typeof window.obterHtmlBadgesUsuario === 'function') {
-          let listaBadges = [];
-          if (user.verificados) {
-            if (Array.isArray(user.verificados)) listaBadges = [...user.verificados];
-            else if (typeof user.verificados === 'string') listaBadges = user.verificados.split(/[,|]/).map(s => s.trim().toLowerCase());
-          }
-          if (eCriadorTarget && !listaBadges.includes('creator')) listaBadges.unshift('creator');
-          if (eVerificado && !listaBadges.includes('verified')) listaBadges.push('verified');
-          htmlBadgesOficiais = window.obterHtmlBadgesUsuario(listaBadges.slice(0, 2));
-        }
+        const tagHtml = typeof window.obterHtmlTag === 'function' ? window.obterHtmlTag(user) : '<span class="user-tag member">Membro</span>';
+        const verificadoSelo = eVerificado ? '<i class="fa-solid fa-circle-check" style="color:#00d2ff; margin-left:4px;" title="Verificado"></i>' : '';
 
         tbody.innerHTML += `
           <tr class="${eCriadorTarget ? 'creator-row' : ''} ${eBanido ? 'banned-row' : ''}">
             <td>
               <div class="table-user-flex">
-                <div class="avatar-wrapper">
-                  <img src="${avatarSrc}" class="avatar-img ${eCriadorTarget ? 'creator-border' : ''}" onerror="this.onerror=null; this.src='${defaultAvatar}';" alt="Avatar">
+                <div class="operator-avatar-wrapper" style="width:38px; height:38px;">
+                  <img src="${avatarSrc}" class="avatar-img" onerror="this.onerror=null; this.src='${defaultAvatar}';" alt="Avatar">
+                  ${molduraSrc ? `<img src="${molduraSrc}" class="operator-moldura" style="display:block;">` : ''}
                 </div>
                 <div class="user-info-cell">
-                  <span class="user-name-row">${nameDisplay}</span>
+                  <span class="user-name-row">${nameDisplay} ${verificadoSelo}</span>
                   <span class="user-id-sub">@${usernameDisplay}</span>
                 </div>
               </div>
@@ -647,7 +645,7 @@
 
             <td>
               <div class="badges-container">
-                ${htmlBadgesOficiais}
+                ${tagHtml}
                 ${eBanido ? '<span class="badge badge-banned"><i class="fa-solid fa-ban"></i> Banido</span>' : ''}
               </div>
             </td>
@@ -765,17 +763,10 @@
 
       const clientSupabase = obterSupabaseDev();
 
-      let payload = { is_banned: true, ban_reason: motivoFinal, motivo_ban: motivoFinal };
-
-      let { error } = await clientSupabase.from('usuarios').update(payload).eq('id', userId);
-
-      if (error && error.code === 'PGRST204') {
-        const { error: errFallback } = await clientSupabase
-          .from('usuarios')
-          .update({ is_banned: true })
-          .eq('id', userId);
-        error = errFallback;
-      }
+      const { error } = await clientSupabase
+        .from('usuarios')
+        .update({ is_banned: true, ban_reason: motivoFinal })
+        .eq('id', userId);
 
       if (error) {
         mostrarToast("Erro ao aplicar banimento: " + error.message, true);
@@ -783,30 +774,24 @@
         mostrarToast(`Usuário @${username} foi banido com sucesso!`);
         registrarLog(`Banimento (Motivo: ${motivoFinal})`, username);
         fecharModalBanimento();
+        carregarTudoDev();
       }
     }
 
     async function executarDesbanimento(userId, username) {
       const clientSupabase = obterSupabaseDev();
 
-      let { error } = await clientSupabase
+      const { error } = await clientSupabase
         .from('usuarios')
-        .update({ is_banned: false, ban_reason: null, motivo_ban: null })
+        .update({ is_banned: false, ban_reason: null })
         .eq('id', userId);
-
-      if (error && error.code === 'PGRST204') {
-        const { error: errFallback } = await clientSupabase
-          .from('usuarios')
-          .update({ is_banned: false })
-          .eq('id', userId);
-        error = errFallback;
-      }
 
       if (error) {
         mostrarToast("Erro ao desbanir usuário: " + error.message, true);
       } else {
         mostrarToast(`Usuário @${username} foi desbanido!`);
         registrarLog('Desbanimento de Conta', username);
+        carregarTudoDev();
       }
     }
 
@@ -832,6 +817,7 @@
       } else {
         mostrarToast(`Nível de @${username} alterado para Lvl ${novoNivel}!`);
         registrarLog(`Nível alterado para Lvl ${novoNivel}`, username);
+        carregarTudoDev();
       }
     }
 
@@ -840,7 +826,7 @@
       if (!user) return;
 
       document.getElementById('edit-user-id').value = user.id;
-      document.getElementById('edit-display-name').value = user.display_name || user.nome || '';
+      document.getElementById('edit-display-name').value = user.display_name || '';
       document.getElementById('edit-username').value = user.username || '';
       document.getElementById('edit-sobre').value = user.sobre || '';
       document.getElementById('edit-verificados').value = user.verificados || '';
@@ -885,6 +871,7 @@
         mostrarToast(`Perfil de @${username} atualizado com sucesso!`);
         registrarLog('Edição de Perfil Completo', username);
         fecharModalEdicao();
+        carregarTudoDev();
       }
     }
 
@@ -901,6 +888,7 @@
       } else {
         mostrarToast(`Status de verificação de @${username} alterado!`);
         registrarLog('Selo de Verificado Alterado', username);
+        carregarTudoDev();
       }
     }
 
@@ -922,6 +910,7 @@
       } else {
         mostrarToast(`Cargo de @${username} alterado para ${novoCargo.toUpperCase()}!`);
         registrarLog(`Alteração de Cargo para ${novoCargo.toUpperCase()}`, username);
+        carregarTudoDev();
       }
     }
 
@@ -936,8 +925,7 @@
         .update({
           avatar_url: defaultAvatar,
           banner_url: '',
-          moldura_url: '',
-          custom_status: '⚠️ Perfil resetado por violação de conteúdo'
+          moldura_url: ''
         })
         .eq('id', userId);
 
@@ -946,6 +934,7 @@
       } else {
         mostrarToast(`Mídias de @${username} foram resetadas!`);
         registrarLog('Reset de Mídias e Fotos', username);
+        carregarTudoDev();
       }
     }
 

@@ -1,9 +1,11 @@
 // ==========================================================================
-// EMOJI KEYBOARD & REACTION SYSTEM (emojis.js) - SPHERE V5.0
+// EMOJI KEYBOARD & REACTION SYSTEM (emojis.js) - SPHERE V5.0 (CORRIGIDO)
 // Universal Categorized Keyboard, Native Emoji Database & Reaction Support
 // ==========================================================================
 
 (function () {
+  'use strict';
+
   let eModoReacaoAtual = false;
   let categoriaAtivaAtual = 'smileys';
 
@@ -25,7 +27,6 @@
         transform: scale(1.15);
       }
 
-      /* Jumboji Reduzido e Proporcional */
       .discord-emoji.jumboji {
         width: 1.6em;
         height: 1.6em;
@@ -33,7 +34,6 @@
         margin: 2px 1px;
       }
 
-      /* Seletor Estilo Teclado */
       .emoji-picker-modal {
         position: absolute;
         bottom: 65px;
@@ -82,7 +82,6 @@
         border-color: #ff2d55;
       }
 
-      /* Categorias do Teclado */
       .emoji-categories-bar {
         display: flex;
         align-items: center;
@@ -210,32 +209,32 @@
     animals: [
       { char: '🐶', name: 'cachorro' }, { char: '🐱', name: 'gato' }, { char: '🐭', name: 'rato' },
       { char: '🐹', name: 'hamster' }, { char: '🐰', name: 'coelho' }, { char: '🦊', name: 'raposa' },
-      { char: '🐻', name: 'urso' }, { char: '🐼', name: 'panda' }, { char: 'koala', char: '🐨', name: 'koala' },
+      { char: '🐻', name: 'urso' }, { char: '🐼', name: 'panda' }, { char: '🐨', name: 'koala' },
       { char: '🐯', name: 'tigre' }, { char: '🦁', name: 'leao' }, { char: '🐮', name: 'vaca' },
-      { char: '🐷', name: 'porco' }, { char: 'frog', char: '🐸', name: 'sapo' }, { char: '🐵', name: 'macaco' },
-      { char: '🐔', name: 'galinha' }, { char: 'penguin', char: '🐧', name: 'pinguim' }, { char: '🐦', name: 'passaro' },
-      { char: '🦅', name: 'aguia' }, { char: 'duck', char: '🦆', name: 'pato' }, { char: 'owl', char: '🦉', name: 'coruja' },
-      { char: '🦇', name: 'morcego' }, { char: 'wolf', char: '🐺', name: 'lobo' }, { char: '🦄', name: 'unicornio' },
+      { char: '🐷', name: 'porco' }, { char: '🐸', name: 'sapo' }, { char: '🐵', name: 'macaco' },
+      { char: '🐔', name: 'galinha' }, { char: '🐧', name: 'pinguim' }, { char: '🐦', name: 'passaro' },
+      { char: '🦅', name: 'aguia' }, { char: '🦆', name: 'pato' }, { char: '🦉', name: 'coruja' },
+      { char: '🦇', name: 'morcego' }, { char: '🐺', name: 'lobo' }, { char: '🦄', name: 'unicornio' },
       { char: '🐝', name: 'abelha' }, { char: '🐛', name: 'lagarta' }, { char: '🦋', name: 'borboleta' }
     ],
     food: [
       { char: '🍏', name: 'maca verde' }, { char: '🍎', name: 'maca' }, { char: '🍐', name: 'pera' },
-      { char: '🍊', name: 'laranja' }, { char: '🍋', name: 'limao' }, { char: 'banana', char: '🍌', name: 'banana' },
-      { char: 'watermelon', char: '🍉', name: 'melancia' }, { char: 'grape', char: '🍇', name: 'uva' }, { char: 'strawberry', char: '🍓', name: 'morango' },
-      { char: 'cherries', char: '🍒', name: 'cereja' }, { char: 'peach', char: '🍑', name: 'pessego' }, { char: 'pineapple', char: '🍍', name: 'abacaxi' },
-      { char: 'coconut', char: '🥥', name: 'coco' }, { char: 'kiwi', char: '🥝', name: 'kiwi' }, { char: 'tomato', char: '🍅', name: 'tomate' },
-      { char: 'avocado', char: '🥑', name: 'abacate' }, { char: 'eggplant', char: '🍆', name: 'berinjela' }, { char: 'potato', char: '🥔', name: 'batata' },
-      { char: 'carrot', char: '🥕', name: 'cenoura' }, { char: 'corn', char: '🌽', name: 'milho' }, { char: 'pizza', char: '🍕', name: 'pizza' },
-      { char: 'burger', char: '🍔', name: 'hamburguer' }, { char: 'fries', char: '🍟', name: 'batata frita' }, { char: 'hotdog', char: '🌭', name: 'cachorro quente' },
-      { char: 'popcorn', char: '🍿', name: 'pipoca' }, { char: 'coffee', char: '☕', name: 'cafe' }, { char: 'beer', char: '🍺', name: 'cerveja' }
+      { char: '🍊', name: 'laranja' }, { char: '🍋', name: 'limao' }, { char: '🍌', name: 'banana' },
+      { char: '🍉', name: 'melancia' }, { char: '🍇', name: 'uva' }, { char: '🍓', name: 'morango' },
+      { char: '🍒', name: 'cereja' }, { char: '🍑', name: 'pessego' }, { char: '🍍', name: 'abacaxi' },
+      { char: '🥥', name: 'coco' }, { char: '🥝', name: 'kiwi' }, { char: '🍅', name: 'tomate' },
+      { char: '🥑', name: 'abacate' }, { char: '🍆', name: 'berinjela' }, { char: '🥔', name: 'batata' },
+      { char: '🥕', name: 'cenoura' }, { char: '🌽', name: 'milho' }, { char: '🍕', name: 'pizza' },
+      { char: '🍔', name: 'hamburguer' }, { char: '🍟', name: 'batata frita' }, { char: '🌭', name: 'cachorro quente' },
+      { char: '🍿', name: 'pipoca' }, { char: '☕', name: 'cafe' }, { char: '🍺', name: 'cerveja' }
     ],
     activities: [
       { char: '⚽', name: 'futebol' }, { char: '🏀', name: 'basquete' }, { char: '🏈', name: 'futebol americano' },
       { char: '⚾', name: 'beisebol' }, { char: '🥎', name: 'softbol' }, { char: '🎾', name: 'tenis' },
-      { char: 'volleyball', char: '🏐', name: 'volei' }, { char: 'rugby', char: '🏉', name: 'rugby' }, { char: 'pingpong', char: '🏓', name: 'ping pong' },
-      { char: 'badminton', char: '🏸', name: 'badminton' }, { char: 'boxing', char: '🥊', name: 'boxe' }, { char: 'martial', char: '🥋', name: 'artes marciais' },
-      { char: 'trophy', char: '🏆', name: 'trofeu' }, { char: 'medal', char: '🥇', name: 'medalha ouro' }, { char: 'gaming', char: '🎮', name: 'controle videogame' },
-      { char: 'dice', char: '🎲', name: 'dado' }, { char: 'chess', char: '♟️', name: 'xadrez' }, { char: 'bowling', char: '🎳', name: 'boliche' }
+      { char: '🏐', name: 'volei' }, { char: '🏉', name: 'rugby' }, { char: '🏓', name: 'ping pong' },
+      { char: '🏸', name: 'badminton' }, { char: '🥊', name: 'boxe' }, { char: '🥋', name: 'artes marciais' },
+      { char: '🏆', name: 'trofeu' }, { char: '🥇', name: 'medalha ouro' }, { char: '🎮', name: 'controle videogame' },
+      { char: '🎲', name: 'dado' }, { char: '♟️', name: 'xadrez' }, { char: '🎳', name: 'boliche' }
     ],
     symbols: [
       { char: '❤️', name: 'coracao vermelho' }, { char: '🧡', name: 'coracao laranja' }, { char: '💛', name: 'coracao amarelo' },
@@ -279,7 +278,7 @@
     return texto.replace(emojiRegex, (match) => {
       const url = obterUrlTwemoji(match);
       const classeJumbo = eApenasEmojis ? 'jumboji' : '';
-      return `<img src="${url}" class="discord-emoji ${classeJumbo}" alt="${match}" draggable="false" onerror="this.outerHTML='${match}'" />`;
+      return `<img src="${url}" class="discord-emoji ${classeJumbo}" alt="${match}" draggable="false" />`;
     });
   }
 
@@ -289,13 +288,14 @@
       const texto = node.nodeValue;
       const emojiRegex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff]|\p{Extended_Pictographic})/gu;
       
-      if (emojiRegex.test(texto) && node.parentNode && !['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA'].includes(node.parentNode.tagName)) {
+      if (emojiRegex.test(texto) && node.parentNode && !['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA'].includes(node.parentNode.tagName) && !node.parentNode.classList.contains('emoji-parsed')) {
         const temp = document.createElement('span');
+        temp.className = 'emoji-parsed';
         temp.innerHTML = converterEmojisDiscord(texto);
         node.parentNode.replaceChild(temp, node);
       }
     } else if (node.nodeType === Node.ELEMENT_NODE) {
-      if (!['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA'].includes(node.tagName) && !node.classList.contains('discord-emoji')) {
+      if (!['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA'].includes(node.tagName) && !node.classList.contains('discord-emoji') && !node.classList.contains('emoji-parsed')) {
         Array.from(node.childNodes).forEach(processarEmojisNoElemento);
       }
     }
@@ -334,12 +334,12 @@
         <input type="text" class="emoji-picker-search" placeholder="${eModoReacao ? 'Buscar reação...' : 'Buscar emoji...'}" oninput="DiscordEmojiSystem.filtrarEmojis(this.value, '${alvoInputId}')">
       </div>
       <div class="emoji-categories-bar">
-        <button class="emoji-cat-btn active" onclick="DiscordEmojiSystem.trocarCategoria('smileys', '${alvoInputId}')" title="Smileys"><i class="fa-solid fa-face-smile"></i></button>
-        <button class="emoji-cat-btn" onclick="DiscordEmojiSystem.trocarCategoria('gestures', '${alvoInputId}')" title="Gestos"><i class="fa-solid fa-hand-peace"></i></button>
-        <button class="emoji-cat-btn" onclick="DiscordEmojiSystem.trocarCategoria('animals', '${alvoInputId}')" title="Animais"><i class="fa-solid fa-cat"></i></button>
-        <button class="emoji-cat-btn" onclick="DiscordEmojiSystem.trocarCategoria('food', '${alvoInputId}')" title="Comida"><i class="fa-solid fa-burger"></i></button>
-        <button class="emoji-cat-btn" onclick="DiscordEmojiSystem.trocarCategoria('activities', '${alvoInputId}')" title="Esportes"><i class="fa-solid fa-futbol"></i></button>
-        <button class="emoji-cat-btn" onclick="DiscordEmojiSystem.trocarCategoria('symbols', '${alvoInputId}')" title="Símbolos"><i class="fa-solid fa-heart"></i></button>
+        <button class="emoji-cat-btn active" onclick="DiscordEmojiSystem.trocarCategoria(event, 'smileys', '${alvoInputId}')" title="Smileys"><i class="fa-solid fa-face-smile"></i></button>
+        <button class="emoji-cat-btn" onclick="DiscordEmojiSystem.trocarCategoria(event, 'gestures', '${alvoInputId}')" title="Gestos"><i class="fa-solid fa-hand-peace"></i></button>
+        <button class="emoji-cat-btn" onclick="DiscordEmojiSystem.trocarCategoria(event, 'animals', '${alvoInputId}')" title="Animais"><i class="fa-solid fa-cat"></i></button>
+        <button class="emoji-cat-btn" onclick="DiscordEmojiSystem.trocarCategoria(event, 'food', '${alvoInputId}')" title="Comida"><i class="fa-solid fa-burger"></i></button>
+        <button class="emoji-cat-btn" onclick="DiscordEmojiSystem.trocarCategoria(event, 'activities', '${alvoInputId}')" title="Esportes"><i class="fa-solid fa-futbol"></i></button>
+        <button class="emoji-cat-btn" onclick="DiscordEmojiSystem.trocarCategoria(event, 'symbols', '${alvoInputId}')" title="Símbolos"><i class="fa-solid fa-heart"></i></button>
       </div>
       <div class="emoji-picker-body" id="emoji-picker-grid"></div>
     `;
@@ -371,10 +371,13 @@
     setTimeout(() => document.addEventListener('click', fecharFora), 10);
   }
 
-  function trocarCategoria(catKey, inputId) {
+  function trocarCategoria(evt, catKey, inputId) {
     categoriaAtivaAtual = catKey;
     document.querySelectorAll('.emoji-cat-btn').forEach(b => b.classList.remove('active'));
-    event.currentTarget.classList.add('active');
+    
+    if (evt && evt.currentTarget) {
+      evt.currentTarget.classList.add('active');
+    }
 
     const lista = EMOJI_CATEGORIES[catKey] || EMOJI_CATEGORIES.smileys;
     renderizarGridPicker(lista, inputId);
@@ -404,7 +407,6 @@
     renderizarGridPicker(filtrados, inputId);
   }
 
-  // Manipulação Inteligente ao Selecionar Emoji (Texto vs Reação Direta em Mensagem)
   function selecionarEmoji(emojiChar, inputId) {
     if (eModoReacaoAtual) {
       if (typeof window.alternarReacaoMensagem === 'function' && window.mensagemAlvoReacaoDireta) {

@@ -1,6 +1,235 @@
 /* ==========================================================================
-   ESTILOS DA ABA CONFIGURAÇÕES / GERENCIAMENTO DE CONTAS (configuracoes.css)
-   Project Z Enhanced | Visual Cyber Dark Glassmorphism
+   ESTILOS DE E-MAIL & SENHA (email-senha.css) - SPHERE v5.2 PRO
+   ========================================================================== */
+
+/* Caixas e Contêineres de Formulário */
+.config-form-box {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.config-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.config-form-group label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #b3a5b8;
+}
+
+.config-form-group input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  font-size: 0.88rem;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.config-form-group input:focus {
+  border-color: #ff2d55;
+  box-shadow: 0 0 10px rgba(255, 45, 85, 0.25);
+}
+
+/* Exibição e Mascaramento de E-mail */
+.config-email-view-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+#config-email-display-text {
+  letter-spacing: 0.5px;
+}
+
+.btn-eye-toggle {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #b3a5b8;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-eye-toggle:hover {
+  background: rgba(255, 45, 85, 0.2);
+  color: #ff2d55;
+}
+
+/* Linha de Entrada de Novo E-mail */
+.config-input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.config-input-row input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  outline: none;
+  font-size: 0.88rem;
+  transition: border-color 0.2s ease;
+}
+
+.config-input-row input:focus {
+  border-color: #ff2d55;
+}
+
+.btn-config-save-inline {
+  background: #ff2d55;
+  color: #ffffff;
+  border: none;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.82rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.btn-config-save-inline:hover {
+  background: #e02447;
+  transform: translateY(-1px);
+}
+
+.config-help-txt {
+  font-size: 0.74rem;
+  color: #8e7f96;
+  margin-top: 4px;
+}
+
+/* Links e Botões de Ação para Senha */
+.config-btn-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.config-forgot-link {
+  margin-top: 8px;
+  text-align: center;
+}
+
+.config-forgot-link a {
+  color: #ff2d55;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.config-forgot-link a:hover {
+  color: #ff7675;
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   ESTILOS DE NOTIFICAÇÕES (confignot.css) - SPHERE v5.2 PRO
+   ========================================================================== */
+
+.config-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 12px 16px;
+  border-radius: 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.config-toggle-row:last-child {
+  margin-bottom: 0;
+}
+
+.config-toggle-row:hover {
+  background: rgba(255, 45, 85, 0.08);
+  border-color: rgba(255, 45, 85, 0.25);
+}
+
+.config-toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.config-toggle-info span {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.config-toggle-info small {
+  font-size: 0.74rem;
+  color: #b3a5b8;
+}
+
+/* Interruptor Estilizado (Checkbox Customizado) */
+.config-toggle-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 44px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  position: relative;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.25s ease;
+  flex-shrink: 0;
+}
+
+.config-toggle-row input[type="checkbox"]::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  background: #ffffff;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.config-toggle-row input[type="checkbox"]:checked {
+  background: #ff2d55;
+  box-shadow: 0 0 12px rgba(255, 45, 85, 0.4);
+}
+
+.config-toggle-row input[type="checkbox"]:checked::before {
+  transform: translateX(20px);
+}
+
+/* ==========================================================================
+   ESTILOS PRINCIPAIS DE CONFIGURAÇÕES (configuracoes.css) - SPHERE v5.2 PRO
    ========================================================================== */
 
 #configuracoes-view {
@@ -35,7 +264,7 @@
   }
 }
 
-/* Header de Configurações */
+/* Topo do Painel */
 .config-header-top {
   display: flex;
   align-items: center;
@@ -64,26 +293,7 @@
   font-size: 1.2rem;
 }
 
-.btn-config-close {
-  background: rgba(255, 255, 255, 0.08);
-  border: none;
-  color: #ffffff;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.btn-config-close:hover {
-  background: #ff2d55;
-  transform: rotate(90deg);
-}
-
-/* Seções Principais */
+/* Seções Gerais */
 .config-section {
   background: rgba(22, 12, 26, 0.88);
   border: 1px solid rgba(255, 45, 85, 0.2);
@@ -111,62 +321,54 @@
   color: #ffd700;
 }
 
+.config-section-title.danger {
+  color: #ff4757;
+}
+
 .config-section-desc {
   font-size: 0.82rem;
   color: #b3a5b8;
   margin-bottom: 12px;
 }
 
-/* Seção do Staff / Criador */
-.config-section.staff-section {
+/* Seção do Staff / Moderação de Devs e Servidor */
+.config-section.staff-section-small {
   background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(22, 12, 26, 0.95) 100%);
   border-color: rgba(255, 215, 0, 0.35);
 }
 
-.config-staff-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+.config-staff-row-small {
+  display: flex;
   gap: 10px;
 }
 
-.btn-staff-access {
+.btn-staff-mini {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 14px;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
   text-decoration: none;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
   transition: all 0.2s ease;
 }
 
-.btn-staff-access i {
-  font-size: 1.4rem;
-}
+.btn-staff-mini.server i { color: #ffd700; }
+.btn-staff-mini.dev i { color: #00d2ff; }
 
-.btn-staff-access.server i { color: #ffd700; }
-.btn-staff-access.dev i { color: #00d2ff; }
-
-.btn-staff-access strong {
-  display: block;
-  font-size: 0.88rem;
-}
-
-.btn-staff-access span {
-  display: block;
-  font-size: 0.72rem;
-  color: #b3a5b8;
-}
-
-.btn-staff-access:hover {
+.btn-staff-mini:hover {
   transform: translateY(-2px);
   border-color: #ffd700;
   box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
 }
 
-/* Lista de Contas Salvas */
+/* Lista de Contas (Alternância de Perfil) */
 .config-accounts-list {
   display: flex;
   flex-direction: column;
@@ -232,6 +434,11 @@
   gap: 8px;
 }
 
+.config-account-check {
+  color: #ff2d55;
+  font-size: 1.1rem;
+}
+
 .btn-config-mini-swap {
   background: rgba(0, 210, 255, 0.15);
   color: #00d2ff;
@@ -278,115 +485,11 @@
   padding: 8px 0;
 }
 
-/* Form de E-mail e Senha */
-.config-form-box {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.config-input-row {
-  display: flex;
-  gap: 10px;
-}
-
-.config-input-row input {
-  flex: 1;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(0, 0, 0, 0.4);
-  color: #ffffff;
-  outline: none;
-  font-size: 0.88rem;
-}
-
-.btn-config-save-inline {
-  background: #ff2d55;
-  color: #ffffff;
-  border: none;
-  padding: 0 16px;
-  border-radius: 10px;
-  font-weight: 800;
-  font-size: 0.82rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: background 0.2s ease;
-}
-
-.btn-config-save-inline:hover {
-  background: #e02447;
-}
-
-.config-email-badge {
-  font-size: 0.75rem;
-  color: #ffd700;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.config-form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.config-form-group label {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #b3a5b8;
-}
-
-.config-form-group input {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(0, 0, 0, 0.4);
-  color: #ffffff;
-  font-size: 0.88rem;
-  outline: none;
-  box-sizing: border-box;
-}
-
-.config-form-group input:focus {
-  border-color: #ff2d55;
-}
-
-/* Informações do Usuário Atual */
-.config-current-user-box {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 12px 14px;
-  border-radius: 12px;
-  margin-bottom: 14px;
-}
-
-.config-user-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.85rem;
-}
-
-.config-user-row .label {
-  color: #b3a5b8;
-  font-weight: 600;
-}
-
-.config-user-row .value {
-  color: #ffffff;
-  font-weight: 700;
-}
-
-/* Botões de Ação Principal */
+/* Botões Gerais de Ação */
 .btn-config-action {
+  flex: 1;
   width: 100%;
   padding: 12px;
-  margin-top: 10px;
   border-radius: 12px;
   border: 1px solid rgba(255, 45, 85, 0.3);
   background: rgba(255, 45, 85, 0.1);
@@ -412,6 +515,17 @@
   box-shadow: 0 4px 14px rgba(255, 45, 85, 0.35);
 }
 
+.btn-config-action.secondary {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e0d0e6;
+}
+
+.btn-config-action.secondary:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
 .btn-config-action.danger {
   border-color: rgba(255, 71, 87, 0.4);
   background: rgba(255, 71, 87, 0.12);
@@ -424,19 +538,7 @@
   box-shadow: 0 4px 14px rgba(255, 71, 87, 0.4);
 }
 
-.btn-config-action.secondary {
-  border-color: rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.06);
-  color: #e0d0e6;
-}
-
-.btn-config-action.secondary:hover {
-  background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
-  box-shadow: none;
-}
-
-/* Modal de Confirmação */
+/* Modal de Re-autenticação e Exclusão */
 .config-modal-overlay {
   position: fixed;
   inset: 0;
@@ -515,6 +617,10 @@
   text-align: center;
 }
 
+.config-modal-error.hidden {
+  display: none;
+}
+
 .config-modal-actions {
   display: flex;
   gap: 10px;
@@ -551,7 +657,7 @@
   background: #ff2e44;
 }
 
-/* Toast Notification */
+/* Toast In-App do Painel de Configurações */
 .config-toast {
   position: fixed;
   bottom: 80px;
@@ -581,10 +687,15 @@
   background: rgba(46, 213, 115, 0.95);
 }
 
-/* Responsividade */
+.config-toast-erro {
+  background: rgba(255, 71, 87, 0.95);
+}
+
+/* Responsividade Mobile */
 @media (max-width: 480px) {
   .config-container { padding: 10px; }
   .config-section { padding: 14px; border-radius: 14px; }
   .config-input-row { flex-direction: column; }
   .btn-config-save-inline { height: 40px; justify-content: center; }
+  .config-btn-row { flex-direction: column; }
 }

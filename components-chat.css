@@ -1,0 +1,241 @@
+/* ==========================================================================
+   CHAT COMPONENTS MODULE STYLES (components-chat.css) - SPHERE V5.2 PRO
+   Header Bar, Search Controls, Verified Badges & Dynamic Theme Sync
+   ========================================================================== */
+
+.chat-sidebar-header {
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--chat-user-border, rgba(255, 45, 85, 0.18));
+  background: var(--chat-header-bg, rgba(22, 13, 25, 0.95));
+  height: 52px;
+  box-sizing: border-box;
+}
+
+.chat-sidebar-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-sidebar-header h3 i {
+  color: var(--chat-user-bg1, var(--chat-accent, #ff2d55));
+}
+
+.chat-sidebar-search {
+  padding: 10px 14px;
+  background: rgba(18, 9, 21, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chat-search-input {
+  width: 100%;
+  height: 34px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 0 12px;
+  color: #ffffff;
+  font-size: 0.82rem;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.chat-search-input:focus {
+  border-color: var(--chat-user-bg1, var(--chat-accent, #ff2d55));
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.chat-search-input::placeholder {
+  color: var(--chat-text-muted, #b3a5b8);
+}
+
+/* Botão de Voltar no Header (Padronizado em 32px) */
+.btn-back-chat-header {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  border-radius: 50% !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+  flex-shrink: 0;
+  margin-right: 6px;
+  box-sizing: border-box;
+}
+
+.btn-back-chat-header:hover {
+  background: var(--chat-user-bg1, var(--chat-accent, #ff2d55));
+  border-color: var(--chat-user-bg1, var(--chat-accent, #ff2d55));
+  color: #ffffff;
+  transform: scale(1.08);
+  box-shadow: 0 0 10px var(--chat-user-glow, rgba(255, 45, 85, 0.4));
+}
+
+/* Grupo de Botões de Ação do Cabeçalho (Padronizado em 32px) */
+.chat-header-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-header-action-icon {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d1c4d6;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  border-radius: 50% !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+  padding: 0;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.btn-header-action-icon:hover {
+  background: var(--chat-user-bg1, var(--chat-accent, #ff2d55));
+  color: #ffffff;
+  border-color: var(--chat-user-bg1, var(--chat-accent, #ff2d55));
+  transform: scale(1.06);
+  box-shadow: 0 0 10px var(--chat-user-glow, rgba(255, 45, 85, 0.4));
+}
+
+.btn-header-action-icon.call-btn {
+  background: rgba(46, 213, 115, 0.15);
+  border-color: rgba(46, 213, 115, 0.3);
+  color: #2ed573;
+}
+
+.btn-header-action-icon.call-btn:hover {
+  background: #2ed573;
+  color: #000000;
+  border-color: #2ed573;
+  box-shadow: 0 0 10px rgba(46, 213, 115, 0.4);
+}
+
+/* Estrutura de Informações do Usuário Alvo */
+.chat-target-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.chat-target-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.chat-target-name {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+/* Estilos dos Badges de Verificados (Sincronizado com Perfil e Homecard) */
+.chat-header-badges-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.chat-header-badges-container i {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.verified-badge-icon {
+  color: #0095f6;
+  filter: drop-shadow(0 0 4px rgba(0, 149, 246, 0.4));
+}
+
+.creator-badge-icon {
+  color: var(--chat-user-bg1, #ff2d55);
+  filter: drop-shadow(0 0 4px var(--chat-user-glow, rgba(255, 45, 85, 0.4)));
+}
+
+.custom-badge-icon {
+  color: #a855f7;
+  filter: drop-shadow(0 0 4px rgba(168, 85, 247, 0.4));
+}
+
+/* Recado / Status Customizado do Alvo */
+.chat-target-status-text {
+  font-size: 0.74rem;
+  color: #b3a5b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-target-status-text .status-custom-pill {
+  color: #e0d0e6;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.chat-target-status-text .custom-status-emoji-header {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.chat-target-status-text .custom-status-txt-header {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .chat-target-name {
+    max-width: 120px;
+  }
+  .chat-target-status-text {
+    max-width: 130px;
+  }
+}

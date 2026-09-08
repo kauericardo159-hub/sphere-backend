@@ -1,33 +1,46 @@
 // ==========================================================================
-// MÓDULO DE EDIÇÃO DE PERFIL - ESTILO PROJECT Z (editarperfil.js)
-// Project Z v5.0 | Integrado com status.js, Cropper.js & verificados.js (V5.2)
+// MÓDULO DE EDIÇÃO DE PERFIL - PROJECT Z / SPHERE V5.2 PRO (editarperfil.js)
+// Upload Cloud Storage, Realtime Tags Analytics, Canvas Color & Mini Previews
 // ==========================================================================
 
-(function () {
+(function (global) {
   'use strict';
 
+  let abaAtiva = 'preview';
   let formularioComAlteracoes = false;
   let selosAutorizadosUsuario = [];
   let selosSelecionados = [];
   let cropperInstancia = null;
+  let canalCorAtivoPerfil = 'bg';
+  let hueAtualCanvasPerfil = 0;
 
-  // Helper para obtenção segura do Supabase Client
-  function obterSupabaseEditarPerfil() {
-    return window.supabaseClient || window.supabase || window.sb || null;
+  const paletaCoresPredefinidas = [
+    '#ff2d55', '#ff7675', '#6c5ce7', '#a29bfe',
+    '#00b894', '#55efc4', '#fdcb6e', '#e17055',
+    '#00d2d3', '#1e90ff', '#fd79a8', '#e84393',
+    '#ffffff', '#d1c4d6', '#2d3436', '#0f0812'
+  ];
+
+  function acionarVibracao(ms = 12) {
+    if (typeof window !== 'undefined' && window.navigator && typeof window.navigator.vibrate === 'function') {
+      try { window.navigator.vibrate(ms); } catch (e) {}
+    }
   }
 
-  // Resolução do Usuário no LocalStorage
+  function obterSupabaseEditarPerfil() {
+    return global.supabaseClient || global.supabase || global.sb || null;
+  }
+
   function obterUsuarioLocalEditarPerfil() {
     try {
       const raw = localStorage.getItem('usuario_logado') || localStorage.getItem('usuario') || localStorage.getItem('user');
-      if (raw) return JSON.parse(raw);
+      return raw ? JSON.parse(raw) : null;
     } catch (e) {
       console.error("[EditarPerfil] Erro ao carregar usuário do localStorage:", e);
+      return null;
     }
-    return null;
   }
 
-  // Sanitizadores de Entrada
   function sanitizarAtributoInput(str) {
     if (!str) return '';
     return String(str).replace(/"/g, '&quot;');
@@ -41,7 +54,18 @@
       .replace(/>/g, '&gt;');
   }
 
-  // Notification Toast
+  function calcularIdadeFormatada(dataNascimento) {
+    if (!dataNascimento) return 'Não informada';
+    const nascimento = new Date(dataNascimento);
+    const hoje = new Date();
+    let idade = hoje.getFullYear() - nascimento.getFullYear();
+    const m = hoje.getMonth() - nascimento.getMonth();
+    if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) {
+      idade--;
+    }
+    return isNaN(idade) || idade < 0 ? 'Não informada' : `${idade} anos`;
+  }
+
   function mostrarToastEdit(mensagem, tipo = 'info', tempo = 3500) {
     const antigo = document.getElementById('edit-toast-msg');
     if (antigo) antigo.remove();
@@ -67,7 +91,55 @@
     }, tempo);
   }
 
-  // Carregamento Assíncrono do Cropper.js
+  // Upload Cloud com tratamento de Bucket (AVATARES e avatares)
+  async function enviarMidiaParaStorage(file, subpasta) {
+    const sb = obterSupabaseEditarPerfil();
+    const usuario = obterUsuarioLocalEditarPerfil();
+    if (!sb) {
+      throw new Error("Sessão ou cliente Supabase indisponível.");
+    }
+
+    const userId = (usuario && usuario.id) ? usuario.id : 'anon';
+    const fileExt = file.name ? file.name.split('.').pop().toLowerCase() : 'webp';
+    const fileName = `${subpasta}_${Date.now()}.${fileExt}`;
+    const filePath = `user_${userId}/${fileName}`;
+
+    let targetBucket = 'AVATARES';
+    
+    let { data, error } = await sb.storage
+      .from(targetBucket)
+      .upload(filePath, file, { 
+        cacheControl: '3600', 
+        upsert: true,
+        contentType: file.type || 'image/webp'
+      });
+
+    if (error && error.message && error.message.includes('not found')) {
+      targetBucket = 'avatares';
+      const retry = await sb.storage
+        .from(targetBucket)
+        .upload(filePath, file, { 
+          cacheControl: '3600', 
+          upsert: true,
+          contentType: file.type || 'image/webp'
+        });
+      data = retry.data;
+      error = retry.error;
+    }
+
+    if (error) {
+      console.error("[Storage Upload Error]:", error);
+      throw error;
+    }
+
+    const { data: publicUrlData } = sb.storage.from(targetBucket).getPublicUrl(filePath);
+    if (!publicUrlData || !publicUrlData.publicUrl) {
+      throw new Error("Erro ao gerar URL pública da mídia.");
+    }
+
+    return publicUrlData.publicUrl;
+  }
+
   async function carregarCropperJS() {
     if (window.Cropper) return true;
 
@@ -88,7 +160,6 @@
     });
   }
 
-  // Proteção contra Perda de Dados Não Salvos
   function confirmarSaidaPagina(e) {
     if (formularioComAlteracoes) {
       const msg = "Você possui alterações não salvas! Deseja realmente sair?";
@@ -146,9 +217,6 @@
     return lista.join(',');
   }
 
-  /**
-   * Mapeamento de permissões alinhado com SISTEMA_BADGES do verificados.js
-   */
   function calcularSelosPermitidos(usuario) {
     const selos = new Set();
     const sistema = window.SISTEMA_BADGES || {};
@@ -160,7 +228,6 @@
     if (usuario.is_vip && sistema.vip) selos.add('vip');
     if (usuario.is_booster && sistema.booster) selos.add('booster');
 
-    // Mapeia selos adicionais concedidos via BD
     if (usuario.selos_concedidos) {
       extrairListaItens(usuario.selos_concedidos).forEach(s => {
         if (sistema[s]) selos.add(s);
@@ -176,7 +243,6 @@
     return Array.from(selos);
   }
 
-  // Recorte Exclusivo para Avatar e Banner
   async function abrirModalCropImage(file, tipo, callbackSucesso) {
     const liberado = await carregarCropperJS();
     if (!liberado) {
@@ -194,7 +260,8 @@
 
       const ratios = {
         avatar: 1,
-        banner: 3 / 1
+        banner: 3 / 1,
+        wallpaper: 9 / 16
       };
 
       modalCrop.innerHTML = `
@@ -220,7 +287,7 @@
         aspectRatio: ratios[tipo] || 1,
         viewMode: 1,
         background: false,
-        autoCropArea: 0.9
+        autoCropArea: 0.95
       });
 
       const fecharCropModal = () => {
@@ -236,9 +303,10 @@
 
       document.getElementById('btn-apply-crop').onclick = () => {
         const dims = {
-          avatar: { width: 300, height: 300 },
-          banner: { width: 1200, height: 400 }
-        }[tipo];
+          avatar: { width: 400, height: 400 },
+          banner: { width: 1200, height: 400 },
+          wallpaper: { width: 1080, height: 1920 }
+        }[tipo] || { width: 600, height: 600 };
 
         const canvas = cropperInstancia.getCroppedCanvas({
           width: dims.width,
@@ -247,64 +315,19 @@
           imageSmoothingQuality: 'high'
         });
 
-        const croppedBase64 = canvas.toDataURL('image/webp', 0.88);
-        callbackSucesso(croppedBase64);
-        fecharCropModal();
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const fileCropped = new File([blob], `${tipo}_${Date.now()}.webp`, { type: 'image/webp' });
+            callbackSucesso(fileCropped);
+          }
+          fecharCropModal();
+        }, 'image/webp', 0.88);
       };
     };
 
     reader.readAsDataURL(file);
   }
 
-  function otimizarImagemGaleria(file, larguraMax, alturaMax, qualidade = 0.85) {
-    return new Promise((resolve, reject) => {
-      if (file.type === 'image/gif' || file.type === 'image/png') {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = (err) => reject(err);
-        reader.readAsDataURL(file);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > larguraMax) {
-              height = Math.round((height * larguraMax) / width);
-              width = larguraMax;
-            }
-          } else {
-            if (height > alturaMax) {
-              width = Math.round((width * alturaMax) / height);
-              height = alturaMax;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          resolve(canvas.toDataURL('image/webp', qualidade));
-        };
-        img.onerror = (err) => reject(err);
-        img.src = event.target.result;
-      };
-      reader.onerror = (err) => reject(err);
-      reader.readAsDataURL(file);
-    });
-  }
-
-  /**
-   * Renderização de Chips integrada com verificados.js
-   */
   function renderizarChipsVerificados() {
     const container = document.getElementById('container-verificados-chips');
     const previewContainer = document.getElementById('container-verificados-preview');
@@ -324,14 +347,16 @@
 
       return `
         <button type="button" class="badge-chip ${estaAtivo ? 'active' : ''}" onclick="window.alternarSeloVerificado('${sanitizarAtributoInput(chaveSelo)}')">
-          <i class="${badgeConfig.icone}"></i> ${badgeConfig.nome}
+          <i class="${badgeConfig.icone}" style="color: ${global.estadoPerfilTemp ? global.estadoPerfilTemp.cor_verificados : '#ff2d55'}"></i> ${badgeConfig.nome}
         </button>
       `;
     }).join('');
 
-    // Atualiza o preview dinâmico chamando o módulo oficial
     if (previewContainer && typeof window.obterHtmlBadgesUsuario === 'function') {
-      previewContainer.innerHTML = window.obterHtmlBadgesUsuario(selosSelecionados);
+      previewContainer.innerHTML = window.obterHtmlBadgesUsuario({
+        verificados: selosAutorizadosUsuario,
+        verificados_exibir: selosSelecionados
+      });
     }
   }
 
@@ -347,10 +372,16 @@
       selosSelecionados.push(chaveSelo);
     }
 
+    if (global.estadoPerfilTemp) {
+      global.estadoPerfilTemp.verificados_exibir = [...selosSelecionados];
+    }
+
     marcarAlteracaoPendente();
     renderizarChipsVerificados();
+    renderizarPreviewDinamico();
   }
 
+  // Abertura do Modal de Edição
   function abrirModalEditarPerfil() {
     const usuario = obterUsuarioLocalEditarPerfil();
     if (!usuario) {
@@ -366,156 +397,285 @@
     const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(usuario.username || 'user')}`;
 
     selosAutorizadosUsuario = calcularSelosPermitidos(usuario);
-    selosSelecionados = extrairListaItens(usuario.verificados);
+    const selosSalvosExibir = usuario.verificados_exibir || usuario.verificados_selecionados || usuario.verificados;
+    selosSelecionados = extrairListaItens(selosSalvosExibir);
+
+    global.estadoPerfilTemp = {
+      display_name: usuario.display_name || usuario.nome || '',
+      username: usuario.username || '',
+      data_nascimento: usuario.data_nascimento || '',
+      pronome: usuario.pronome || '',
+      genero: usuario.genero || '',
+      sobre: usuario.sobre || '',
+      status: usuario.status || 'online',
+      status_emoji: usuario.status_emoji || '',
+      custom_status: usuario.custom_status || '',
+      status_tempo: 'sempre',
+      banner_url: usuario.banner_url || '',
+      avatar_url: usuario.avatar_url || '',
+      moldura_url: usuario.moldura_url || '',
+      wallpaper_url: usuario.wallpaper_url || '',
+      tags: usuario.tags ? usuario.tags.split('|').map(t => t.trim()).filter(Boolean) : [],
+      verificados_exibir: [...selosSelecionados],
+      cor_bg1: usuario.cor_bg1 || usuario.cor_tema || '#ff2d55',
+      cor_bg2: usuario.cor_bg2 || usuario.cor_tema || '#ff7675',
+      cor_verificados: usuario.cor_verificados || '#ff2d55'
+    };
 
     const container = document.createElement('div');
     container.id = 'edit-perfil-full-container';
     container.className = 'edit-perfil-full-container';
 
     container.innerHTML = `
-      <div class="edit-perfil-wrapper">
+      <div class="edit-perfil-wrapper" style="--user-theme-color: ${global.estadoPerfilTemp.cor_bg1}">
         <div class="edit-perfil-header">
-          <h2><i class="fa-solid fa-sliders"></i> Editar Perfil</h2>
+          <h2><i class="fa-solid fa-sliders"></i> Painel de Edição do Perfil</h2>
           <button type="button" class="btn-fechar-top" onclick="window.solicitarFecharModal()">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
 
-        <div class="media-card-box" id="drop-area-banner">
-          <div class="media-card-label"><i class="fa-solid fa-image"></i> Banner de Capa</div>
-          <div class="source-tabs">
-            <button type="button" class="source-tab-btn active" id="tab-banner-url" onclick="window.alternarFonteMedia('banner', 'url')">
-              <i class="fa-solid fa-link"></i> Link URL
-            </button>
-            <button type="button" class="source-tab-btn" id="tab-banner-file" onclick="window.alternarFonteMedia('banner', 'file')">
-              <i class="fa-solid fa-folder-open"></i> Galeria
-            </button>
-          </div>
-          <div id="group-banner-url">
-            <input type="text" id="edit-banner-url" value="${sanitizarAtributoInput(usuario.banner_url)}" placeholder="https://exemplo.com/banner.gif" />
-          </div>
-          <div id="group-banner-file" style="display: none;">
-            <input type="file" id="file-banner-input" accept="image/*,image/gif" />
-          </div>
-          <div class="banner-preview-box">
-            <img id="preview-banner-img" src="${usuario.banner_url || 'https://via.placeholder.com/600x180/10050c/ff2d55?text=Project+Z'}" class="preview-banner-img" alt="Banner" />
-          </div>
-          <div class="preview-controls">
-            <label><i class="fa-solid fa-magnifying-glass-plus"></i> Zoom Banner:</label>
-            <input type="range" id="zoom-banner" min="0.8" max="2.2" step="0.05" value="1" />
-          </div>
+        <div class="edit-perfil-tabs-bar">
+          <button type="button" class="tab-btn active" id="tab-btn-preview" onclick="window.mudarAbaPerfil('preview')"><i class="fa-solid fa-eye"></i> Pré-visualização</button>
+          <button type="button" class="tab-btn" id="tab-btn-info" onclick="window.mudarAbaPerfil('info')"><i class="fa-solid fa-id-card"></i> Informações</button>
+          <button type="button" class="tab-btn" id="tab-btn-status" onclick="window.mudarAbaPerfil('status')"><i class="fa-solid fa-circle-dot"></i> Status</button>
+          <button type="button" class="tab-btn" id="tab-btn-fotos" onclick="window.mudarAbaPerfil('fotos')"><i class="fa-solid fa-image"></i> Fotos & Mídias</button>
+          <button type="button" class="tab-btn" id="tab-btn-tags" onclick="window.mudarAbaPerfil('tags')"><i class="fa-solid fa-tags"></i> Tags & Verificados</button>
+          <button type="button" class="tab-btn" id="tab-btn-cores" onclick="window.mudarAbaPerfil('cores')"><i class="fa-solid fa-palette"></i> Cores do Perfil</button>
         </div>
 
-        <div class="media-card-box" id="drop-area-avatar">
-          <div class="media-card-label"><i class="fa-solid fa-user-gear"></i> Avatar & Moldura</div>
-          <div class="source-tabs">
-            <button type="button" class="source-tab-btn active" id="tab-avatar-url" onclick="window.alternarFonteMedia('avatar', 'url')">
-              <i class="fa-solid fa-link"></i> URL Avatar
-            </button>
-            <button type="button" class="source-tab-btn" id="tab-avatar-file" onclick="window.alternarFonteMedia('avatar', 'file')">
-              <i class="fa-solid fa-folder-open"></i> Galeria Avatar
-            </button>
+        <div class="edit-perfil-content-body">
+
+          <div id="edit-sec-preview" class="edit-section-tab">
+            <div class="profile-card-preview-wrapper" id="profile-preview-card" style="background-image: url('${global.estadoPerfilTemp.wallpaper_url}');">
+              <div class="profile-preview-banner" id="prev-banner-box" style="background-image: url('${global.estadoPerfilTemp.banner_url || 'https://via.placeholder.com/600x180/10050c/ff2d55?text=Sphere'}');"></div>
+              
+              <div class="profile-preview-header">
+                <div class="profile-preview-avatar-box">
+                  <img src="${global.estadoPerfilTemp.avatar_url || defaultAvatar}" class="preview-avatar" id="prev-avatar-img">
+                  <img src="${global.estadoPerfilTemp.moldura_url || ''}" class="preview-moldura" id="prev-moldura-img" style="${global.estadoPerfilTemp.moldura_url ? '' : 'display:none;'}">
+                  <span class="preview-status-indicator ${global.estadoPerfilTemp.status}" id="prev-status-dot"></span>
+                </div>
+                
+                <div class="profile-preview-main-info">
+                  <h3 id="prev-display-name">${sanitizarAtributoInput(global.estadoPerfilTemp.display_name || 'Seu Nome')}</h3>
+                  <span class="preview-username" id="prev-username">@${sanitizarAtributoInput(global.estadoPerfilTemp.username || 'usuario')}</span>
+                  
+                  <div class="preview-badge-row" id="prev-badge-row"></div>
+                </div>
+              </div>
+
+              <div class="profile-preview-details">
+                <div class="preview-status-bubble" id="prev-status-bubble">
+                  ${global.estadoPerfilTemp.status_emoji ? `<span class="emoji">${global.estadoPerfilTemp.status_emoji}</span>` : ''}
+                  <span class="text">${sanitizarAtributoInput(global.estadoPerfilTemp.custom_status || '')}</span>
+                </div>
+
+                <div class="preview-meta-grid">
+                  <span><i class="fa-solid fa-cake-candles"></i> <strong id="prev-idade">${calcularIdadeFormatada(global.estadoPerfilTemp.data_nascimento)}</strong></span>
+                  <span><i class="fa-solid fa-venus-mars"></i> <strong id="prev-genero">${sanitizarAtributoInput(global.estadoPerfilTemp.genero || 'Gênero não informado')}</strong> (${sanitizarAtributoInput(global.estadoPerfilTemp.pronome || 'Pronomes')})</span>
+                </div>
+
+                <p class="preview-bio" id="prev-sobre">${sanitizarTextoArea(global.estadoPerfilTemp.sobre || 'Sua biografia aparecerá aqui...')}</p>
+
+                <div class="preview-tags-container" id="prev-tags-container"></div>
+              </div>
+            </div>
           </div>
 
-          <div id="group-avatar-url">
-            <input type="text" id="edit-avatar-url" value="${sanitizarAtributoInput(usuario.avatar_url)}" placeholder="URL da foto/GIF" />
-          </div>
-          <div id="group-avatar-file" style="display: none;">
-            <input type="file" id="file-avatar-input" accept="image/*,image/gif" />
+          <div id="edit-sec-info" class="edit-section-tab" style="display:none;">
+            <div class="edit-form-group">
+              <label>Nome de Exibição</label>
+              <input type="text" id="edit-display-name" value="${sanitizarAtributoInput(global.estadoPerfilTemp.display_name)}" placeholder="Seu apelido público" oninput="window.atualizarTempPerfil('display_name', this.value)" />
+            </div>
+
+            <div class="edit-form-group">
+              <label>
+                Nome de Usuário (@handle)
+                ${!checkUsername.permitido ? `<span class="username-notice"><i class="fa-solid fa-lock"></i> Bloqueado por ${checkUsername.diasRestantes} dia(s)</span>` : ''}
+              </label>
+              <input type="text" id="edit-username" value="${sanitizarAtributoInput(global.estadoPerfilTemp.username)}" placeholder="seu_usuario" ${!checkUsername.permitido ? 'disabled' : ''} oninput="window.atualizarTempPerfil('username', this.value)" />
+            </div>
+
+            <div class="edit-form-group">
+              <label>Data de Nascimento (Idade calculada automaticamente)</label>
+              <input type="date" id="edit-data-nascimento" value="${global.estadoPerfilTemp.data_nascimento}" onchange="window.atualizarTempPerfil('data_nascimento', this.value)" />
+            </div>
+
+            <div class="form-row-double">
+              <div class="edit-form-group">
+                <label>Pronomes</label>
+                <input type="text" id="edit-pronome" placeholder="Ex: Ele/Dele, Ela/Dela" value="${sanitizarAtributoInput(global.estadoPerfilTemp.pronome)}" oninput="window.atualizarTempPerfil('pronome', this.value)" />
+              </div>
+              <div class="edit-form-group">
+                <label>Gênero</label>
+                <input type="text" id="edit-genero" placeholder="Ex: Masculino, Feminino, Não-Binário" value="${sanitizarAtributoInput(global.estadoPerfilTemp.genero)}" oninput="window.atualizarTempPerfil('genero', this.value)" />
+              </div>
+            </div>
+
+            <div class="edit-form-group">
+              <label>Sobre Mim | Biografia</label>
+              <textarea id="edit-sobre" placeholder="Escreva uma breve apresentação..." oninput="window.atualizarTempPerfil('sobre', this.value)">${sanitizarTextoArea(global.estadoPerfilTemp.sobre)}</textarea>
+            </div>
           </div>
 
-          <div class="avatar-frame-container">
-            <img id="preview-avatar-img" src="${usuario.avatar_url || defaultAvatar}" class="preview-avatar-img" alt="Avatar" />
-            <img id="preview-frame-img" src="${usuario.moldura_url || ''}" class="preview-frame-img" alt="Moldura" style="${usuario.moldura_url ? '' : 'display:none;'}" />
+          <div id="edit-sec-status" class="edit-section-tab" style="display:none;">
+            <div class="edit-form-group">
+              <label>Recado do Perfil (Emoji opcional + Texto opcional)</label>
+              <div class="status-custom-row">
+                <input type="text" id="edit-status-emoji" class="emoji-picker-input" value="${sanitizarAtributoInput(global.estadoPerfilTemp.status_emoji)}" maxlength="2" placeholder="💬" oninput="window.atualizarTempPerfil('status_emoji', this.value)" />
+                <input type="text" id="edit-custom-status" style="flex:1;" value="${sanitizarAtributoInput(global.estadoPerfilTemp.custom_status)}" placeholder="O que você está pensando agora?" oninput="window.atualizarTempPerfil('custom_status', this.value)" />
+              </div>
+            </div>
+
+            <div class="edit-form-group">
+              <label>Duração do Recado</label>
+              <div class="select-custom-wrapper">
+                <select id="edit-status-tempo" onchange="window.atualizarTempPerfil('status_tempo', this.value)">
+                  <option value="sempre" ${global.estadoPerfilTemp.status_tempo === 'sempre' ? 'selected' : ''}>Sempre visível</option>
+                  <option value="30m" ${global.estadoPerfilTemp.status_tempo === '30m' ? 'selected' : ''}>30 Minutos</option>
+                  <option value="1h" ${global.estadoPerfilTemp.status_tempo === '1h' ? 'selected' : ''}>1 Hora</option>
+                  <option value="5h" ${global.estadoPerfilTemp.status_tempo === '5h' ? 'selected' : ''}>5 Horas</option>
+                  <option value="24h" ${global.estadoPerfilTemp.status_tempo === '24h' ? 'selected' : ''}>24 Horas</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="edit-form-group">
+              <label>Status de Presença</label>
+              <div class="presence-selector-grid">
+                <button type="button" class="btn-presence online ${global.estadoPerfilTemp.status === 'online' ? 'selected' : ''}" onclick="window.selecionarEstadoPresenca('online')">🟢 Online</button>
+                <button type="button" class="btn-presence ausente ${global.estadoPerfilTemp.status === 'ausente' ? 'selected' : ''}" onclick="window.selecionarEstadoPresenca('ausente')">🟠 Ausente</button>
+                <button type="button" class="btn-presence ocupado ${global.estadoPerfilTemp.status === 'dnd' ? 'selected' : ''}" onclick="window.selecionarEstadoPresenca('dnd')">🔴 Ocupado</button>
+                <button type="button" class="btn-presence offline ${global.estadoPerfilTemp.status === 'offline' ? 'selected' : ''}" onclick="window.selecionarEstadoPresenca('offline')">⚪ Offline</button>
+              </div>
+            </div>
           </div>
 
-          <div class="preview-controls">
-            <label><i class="fa-solid fa-magnifying-glass-plus"></i> Zoom Avatar:</label>
-            <input type="range" id="zoom-avatar" min="0.8" max="2.2" step="0.05" value="1" />
+          <div id="edit-sec-fotos" class="edit-section-tab" style="display:none;">
+            <div class="media-card-box" id="drop-area-banner">
+              <div class="media-card-label"><i class="fa-solid fa-image"></i> Banner de Capa</div>
+              
+              <div class="mini-media-preview-box banner-preview">
+                <img id="mini-prev-banner" src="${global.estadoPerfilTemp.banner_url || 'https://via.placeholder.com/600x180/10050c/ff2d55?text=Sem+Banner'}" alt="Preview Banner">
+              </div>
+
+              <input type="file" id="file-banner-input" accept="image/*,image/gif" style="display:none;" onchange="window.processarArquivoInput(this, 'banner')" />
+              <button type="button" class="btn-upload-styled" onclick="document.getElementById('file-banner-input').click()">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Selecionar/Trocar Banner
+              </button>
+              
+              <div class="preview-controls">
+                <label><i class="fa-solid fa-magnifying-glass-plus"></i> Zoom Banner:</label>
+                <input type="range" id="zoom-banner" min="0.8" max="2.2" step="0.05" value="1" oninput="window.ajustarZoomMedia('banner', this.value)" />
+              </div>
+            </div>
+
+            <div class="media-card-box" id="drop-area-avatar">
+              <div class="media-card-label"><i class="fa-solid fa-user-gear"></i> Foto de Avatar & Moldura</div>
+              
+              <div class="mini-avatar-frame-preview-box">
+                <img id="mini-prev-avatar" src="${global.estadoPerfilTemp.avatar_url || defaultAvatar}" alt="Preview Avatar">
+                <img id="mini-prev-moldura" src="${global.estadoPerfilTemp.moldura_url || ''}" alt="Preview Moldura" style="${global.estadoPerfilTemp.moldura_url ? '' : 'display:none;'}">
+              </div>
+
+              <div class="double-upload-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div>
+                  <input type="file" id="file-avatar-input" accept="image/*,image/gif" style="display:none;" onchange="window.processarArquivoInput(this, 'avatar')" />
+                  <button type="button" class="btn-upload-styled" onclick="document.getElementById('file-avatar-input').click()">
+                    <i class="fa-solid fa-camera"></i> Trocar Avatar
+                  </button>
+                </div>
+                <div>
+                  <input type="file" id="file-moldura-input" accept="image/png,image/gif,image/webp" style="display:none;" onchange="window.processarArquivoInput(this, 'moldura')" />
+                  <button type="button" class="btn-upload-styled" onclick="document.getElementById('file-moldura-input').click()">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Trocar Moldura
+                  </button>
+                </div>
+              </div>
+
+              <div class="preview-controls">
+                <label><i class="fa-solid fa-magnifying-glass-plus"></i> Zoom Avatar:</label>
+                <input type="range" id="zoom-avatar" min="0.8" max="2.2" step="0.05" value="1" oninput="window.ajustarZoomMedia('avatar', this.value)" />
+              </div>
+            </div>
+
+            <div class="media-card-box">
+              <div class="media-card-label"><i class="fa-solid fa-mountain-sun"></i> Wallpaper de Fundo do Perfil</div>
+              
+              <div class="mini-media-preview-box wallpaper-preview">
+                <img id="mini-prev-wallpaper" src="${global.estadoPerfilTemp.wallpaper_url || 'https://via.placeholder.com/600x300/10050c/ff2d55?text=Sem+Wallpaper'}" alt="Preview Wallpaper">
+              </div>
+
+              <input type="file" id="file-wallpaper-input" accept="image/*,image/gif" style="display:none;" onchange="window.processarArquivoInput(this, 'wallpaper')" />
+              <button type="button" class="btn-upload-styled" onclick="document.getElementById('file-wallpaper-input').click()">
+                <i class="fa-solid fa-file-image"></i> Selecionar/Trocar Wallpaper
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div class="media-card-box">
-          <div class="media-card-label"><i class="fa-solid fa-circle-notch"></i> Moldura de Perfil (Png/Gif Transparente)</div>
-          <div class="source-tabs">
-            <button type="button" class="source-tab-btn active" id="tab-moldura-url" onclick="window.alternarFonteMedia('moldura', 'url')">
-              <i class="fa-solid fa-link"></i> URL Moldura
-            </button>
-            <button type="button" class="source-tab-btn" id="tab-moldura-file" onclick="window.alternarFonteMedia('moldura', 'file')">
-              <i class="fa-solid fa-folder-open"></i> Galeria
-            </button>
+          <div id="edit-sec-tags" class="edit-section-tab" style="display:none;">
+            <div class="edit-form-group">
+              <label>
+                Tags de Perfil
+                ${!temPermissaoTags ? '<span class="permission-notice"><i class="fa-solid fa-lock"></i> Indisponível</span>' : ''}
+              </label>
+              <div class="tag-builder-row">
+                <input type="text" id="input-new-tag" placeholder="Digite uma tag (ex: furry, roblox)..." ${!temPermissaoTags ? 'disabled' : ''} oninput="window.filtrarAutocompleteTagsRealtime(this.value)" />
+                <button type="button" class="btn-add-tag" ${!temPermissaoTags ? 'disabled' : ''} onclick="window.adicionarTagPerfil()"><i class="fa-solid fa-plus"></i></button>
+              </div>
+              <div class="tags-autocomplete-list" id="tags-autocomplete-container"></div>
+              <div class="tags-active-list" id="tags-active-container"></div>
+            </div>
+
+            <div class="edit-form-group">
+              <label>
+                Selos de Verificado
+                <span class="permission-notice"><i class="fa-solid fa-shield-halved"></i> Escolha quais selos exibir</span>
+              </label>
+              <div id="container-verificados-chips" class="badges-chips-wrapper"></div>
+              <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                <small style="color: #aaa;">Pré-visualização no Perfil:</small>
+                <div id="container-verificados-preview"></div>
+              </div>
+            </div>
           </div>
-          <div id="group-moldura-url">
-            <input type="text" id="edit-moldura-url" value="${sanitizarAtributoInput(usuario.moldura_url)}" placeholder="https://exemplo.com/frame.png" />
+
+          <div id="edit-sec-cores" class="edit-section-tab" style="display:none;">
+            <div class="edit-form-group">
+              <label><i class="fa-solid fa-palette" style="color:#ff2d55;"></i> Personalização de Cores do Perfil</label>
+              
+              <div class="custom-color-selector-box">
+                <div class="color-target-selector-tabs">
+                  <button type="button" class="color-target-pill ${canalCorAtivoPerfil === 'bg' ? 'active' : ''}" onclick="window.alternarCanalCorPerfil('bg')">Cor 1 (Tema)</button>
+                  <button type="button" class="color-target-pill ${canalCorAtivoPerfil === 'bg2' ? 'active' : ''}" onclick="window.alternarCanalCorPerfil('bg2')">Cor 2 (Degradê)</button>
+                  <button type="button" class="color-target-pill ${canalCorAtivoPerfil === 'verificados' ? 'active' : ''}" onclick="window.alternarCanalCorPerfil('verificados')">Verificados</button>
+                </div>
+
+                <div class="canvas-picker-container">
+                  <canvas id="color-picker-canvas-perfil" class="color-canvas-map" width="400" height="120"></canvas>
+                  <input type="range" min="0" max="360" value="0" class="color-hue-slider" id="hue-range-slider-perfil" oninput="window.atualizarMatizCanvasPerfil(this.value)">
+                </div>
+
+                <div class="color-quick-swatches">
+                  ${paletaCoresPredefinidas.map(c => `<div class="swatch-circle" style="background: ${c};" onclick="window.selecionarCorDoPickerProprioPerfil('${c}')"></div>`).join('')}
+                </div>
+
+                <div class="color-hex-input-row">
+                  <div class="color-hex-preview-badge" id="current-hex-badge-perfil"></div>
+                  <input type="text" id="custom-hex-input-perfil" placeholder="#FFFFFF" oninput="window.processarInputHexNativoPerfil(this.value)" />
+                </div>
+              </div>
+            </div>
           </div>
-          <div id="group-moldura-file" style="display: none;">
-            <input type="file" id="file-moldura-input" accept="image/png,image/gif,image/webp" />
-          </div>
-        </div>
 
-        <div class="edit-form-group">
-          <label>Status de Presença</label>
-          <div class="select-custom-wrapper">
-            <select id="edit-status">
-              <option value="online" ${usuario.status === 'online' ? 'selected' : ''}>🟢 Online | Disponível</option>
-              <option value="ausente" ${usuario.status === 'ausente' ? 'selected' : ''}>🟠 Ausente | Inativo</option>
-              <option value="dnd" ${usuario.status === 'dnd' ? 'selected' : ''}>🔴 Não Perturbe | Ocupado</option>
-              <option value="offline" ${usuario.status === 'offline' ? 'selected' : ''}>⚪ Offline | Invisível</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="edit-form-group">
-          <label>Recado do Perfil</label>
-          <div class="status-custom-row">
-            <input type="text" id="edit-status-emoji" class="emoji-picker-input" value="${sanitizarAtributoInput(usuario.status_emoji || '💬')}" maxlength="2" placeholder="💬" />
-            <input type="text" id="edit-custom-status" style="flex:1;" value="${sanitizarAtributoInput(usuario.custom_status || '')}" placeholder="O que você está pensando agora?" />
-          </div>
-        </div>
-
-        <div class="edit-form-group">
-          <label>Nome de Exibição</label>
-          <input type="text" id="edit-display-name" value="${sanitizarAtributoInput(usuario.display_name || usuario.nome || '')}" placeholder="Seu apelido público" />
-        </div>
-
-        <div class="edit-form-group">
-          <label>
-            Nome de Usuário (@handle)
-            ${!checkUsername.permitido ? `<span class="username-notice"><i class="fa-solid fa-lock"></i> Bloqueado por ${checkUsername.diasRestantes} dia(s)</span>` : ''}
-          </label>
-          <input type="text" id="edit-username" value="${sanitizarAtributoInput(usuario.username || '')}" placeholder="seu_usuario" ${!checkUsername.permitido ? 'disabled' : ''} />
-        </div>
-
-        <div class="edit-form-group">
-          <label>
-            Selos de Verificado
-            <span class="permission-notice"><i class="fa-solid fa-shield-halved"></i> Apenas selos concedidos</span>
-          </label>
-          <div id="container-verificados-chips" class="badges-chips-wrapper"></div>
-          <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
-            <small style="color: #aaa;">Pré-visualização:</small>
-            <div id="container-verificados-preview"></div>
-          </div>
-        </div>
-
-        <div class="edit-form-group">
-          <label>
-            Tags de Perfil
-            ${!temPermissaoTags ? '<span class="permission-notice"><i class="fa-solid fa-lock"></i> Indisponível</span>' : ''}
-          </label>
-          <input type="text" id="edit-tags" value="${sanitizarAtributoInput(usuario.tags || '')}" placeholder="Gamer | Anime | Developer | Music" ${!temPermissaoTags ? 'disabled' : ''} />
-        </div>
-
-        <div class="edit-form-group">
-          <label>Sobre Mim | Biografia</label>
-          <textarea id="edit-sobre" placeholder="Escreva uma breve apresentação...">${sanitizarTextoArea(usuario.sobre)}</textarea>
         </div>
 
         <div class="edit-btns-row">
           <button type="button" class="btn-cancelar-edit" onclick="window.solicitarFecharModal()">
             <i class="fa-solid fa-xmark"></i> Cancelar
           </button>
-          <button type="button" id="btn-salvar-perfil" class="btn-salvar-edit" onclick="window.salvarAlteracoesPerfil()">
+          <button type="button" id="btn-salvar-perfil" class="btn-salvar-edit" onclick="window.salvarPerfilCompleto()">
             <i class="fa-solid fa-check"></i> Salvar Alterações
           </button>
         </div>
@@ -524,8 +684,354 @@
 
     document.body.appendChild(container);
     renderizarChipsVerificados();
+    renderizarTagsAtivas();
+    renderizarPreviewDinamico();
     inicializarListenersFormulario();
     configurarDragAndDrop();
+  }
+
+  function mudarAbaPerfil(aba) {
+    acionarVibracao(10);
+    abaAtiva = aba;
+    document.querySelectorAll('.edit-perfil-tabs-bar .tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.edit-section-tab').forEach(sec => sec.style.display = 'none');
+
+    const btnAtivo = document.getElementById(`tab-btn-${aba}`);
+    if (btnAtivo) btnAtivo.classList.add('active');
+
+    const secAtiva = document.getElementById(`edit-sec-${aba}`);
+    if (secAtiva) secAtiva.style.display = 'block';
+
+    if (aba === 'preview') renderizarPreviewDinamico();
+    if (aba === 'cores') {
+      inicializarCanvasPickerPerfil();
+      sincronizarExibicaoColorPickerPerfil();
+    }
+  }
+
+  function atualizarTempPerfil(chave, valor) {
+    marcarAlteracaoPendente();
+    if (!global.estadoPerfilTemp) return;
+
+    global.estadoPerfilTemp[chave] = valor;
+
+    const wrapper = document.querySelector('.edit-perfil-wrapper');
+    if (wrapper && (chave === 'cor_bg1' || chave === 'cor_bg2')) {
+      const bg1 = global.estadoPerfilTemp.cor_bg1 || '#ff2d55';
+      const bg2 = global.estadoPerfilTemp.cor_bg2 || bg1;
+      const gradient = bg1 !== bg2 ? `linear-gradient(135deg, ${bg1}, ${bg2})` : bg1;
+      wrapper.style.setProperty('--user-theme-color', bg1);
+      wrapper.style.setProperty('--user-theme-gradient', gradient);
+    }
+
+    // Atualiza sincronizadamente os mini-previews dos cards de fotos
+    sincronizarMiniPreviewsMidia(chave, valor);
+    renderizarPreviewDinamico();
+  }
+
+  // Atualização dos mini-previews na aba de fotos
+  function sincronizarMiniPreviewsMidia(chave, valor) {
+    if (chave === 'banner_url') {
+      const miniBanner = document.getElementById('mini-prev-banner');
+      if (miniBanner) miniBanner.src = valor;
+    } else if (chave === 'avatar_url') {
+      const miniAvatar = document.getElementById('mini-prev-avatar');
+      if (miniAvatar) miniAvatar.src = valor;
+    } else if (chave === 'moldura_url') {
+      const miniMoldura = document.getElementById('mini-prev-moldura');
+      if (miniMoldura) {
+        if (valor) {
+          miniMoldura.src = valor;
+          miniMoldura.style.display = 'block';
+        } else {
+          miniMoldura.style.display = 'none';
+        }
+      }
+    } else if (chave === 'wallpaper_url') {
+      const miniWallpaper = document.getElementById('mini-prev-wallpaper');
+      if (miniWallpaper) miniWallpaper.src = valor;
+    }
+  }
+
+  function selecionarEstadoPresenca(status) {
+    acionarVibracao(10);
+    marcarAlteracaoPendente();
+    global.estadoPerfilTemp.status = status;
+
+    document.querySelectorAll('.presence-selector-grid .btn-presence').forEach(btn => btn.classList.remove('selected'));
+    const btnSelected = document.querySelector(`.presence-selector-grid .btn-presence.${status}`);
+    if (btnSelected) btnSelected.classList.add('selected');
+
+    renderizarPreviewDinamico();
+  }
+
+  function renderizarPreviewDinamico() {
+    const st = global.estadoPerfilTemp;
+    if (!st) return;
+
+    const prevCard = document.getElementById('profile-preview-card');
+    if (prevCard && st.wallpaper_url) {
+      prevCard.style.backgroundImage = `url('${st.wallpaper_url}')`;
+    }
+
+    const prevBannerBox = document.getElementById('prev-banner-box');
+    if (prevBannerBox) {
+      prevBannerBox.style.backgroundImage = `url('${st.banner_url || 'https://via.placeholder.com/600x180/10050c/ff2d55?text=Sphere'}')`;
+    }
+
+    const prevAvatar = document.getElementById('prev-avatar-img');
+    if (prevAvatar) {
+      prevAvatar.src = st.avatar_url || `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(st.username || 'user')}`;
+    }
+
+    const prevMoldura = document.getElementById('prev-moldura-img');
+    if (prevMoldura) {
+      if (st.moldura_url) {
+        prevMoldura.src = st.moldura_url;
+        prevMoldura.style.display = 'block';
+      } else {
+        prevMoldura.style.display = 'none';
+      }
+    }
+
+    const prevStatusDot = document.getElementById('prev-status-dot');
+    if (prevStatusDot) {
+      prevStatusDot.className = `preview-status-indicator ${st.status}`;
+    }
+
+    const prevName = document.getElementById('prev-display-name');
+    if (prevName) prevName.innerText = st.display_name || 'Seu Nome';
+
+    const prevUser = document.getElementById('prev-username');
+    if (prevUser) prevUser.innerText = `@${st.username || 'usuario'}`;
+
+    const prevIdade = document.getElementById('prev-idade');
+    if (prevIdade) prevIdade.innerText = calcularIdadeFormatada(st.data_nascimento);
+
+    const prevGenero = document.getElementById('prev-genero');
+    if (prevGenero) prevGenero.innerText = st.genero || 'Gênero não informado';
+
+    const prevSobre = document.getElementById('prev-sobre');
+    if (prevSobre) prevSobre.innerText = st.sobre || 'Sua biografia aparecerá aqui...';
+
+    const prevBubble = document.getElementById('prev-status-bubble');
+    if (prevBubble) {
+      if (!st.status_emoji && !st.custom_status) {
+        prevBubble.style.display = 'none';
+      } else {
+        prevBubble.style.display = 'inline-flex';
+        prevBubble.innerHTML = `${st.status_emoji ? `<span class="emoji">${st.status_emoji}</span>` : ''} <span class="text">${st.custom_status || ''}</span>`;
+      }
+    }
+
+    const prevTags = document.getElementById('prev-tags-container');
+    if (prevTags) {
+      const bg1 = st.cor_bg1 || '#ff2d55';
+      const bg2 = st.cor_bg2 || bg1;
+      const bgStyle = bg1 !== bg2 ? `linear-gradient(135deg, ${bg1}, ${bg2})` : bg1;
+      prevTags.innerHTML = st.tags.map(t => `<span class="profile-tag-pill" style="background: ${bgStyle}; color: #fff;">${t}</span>`).join('');
+    }
+
+    const prevBadges = document.getElementById('prev-badge-row');
+    if (prevBadges && typeof window.obterHtmlBadgesUsuario === 'function') {
+      prevBadges.innerHTML = window.obterHtmlBadgesUsuario({
+        verificados: st.verificados_exibir,
+        verificados_exibir: st.verificados_exibir
+      });
+      prevBadges.querySelectorAll('i, svg').forEach(elem => {
+        elem.style.color = st.cor_verificados;
+      });
+    }
+  }
+
+  async function filtrarAutocompleteTagsRealtime(valor) {
+    const container = document.getElementById('tags-autocomplete-container');
+    if (!container) return;
+
+    const query = valor.trim().toLowerCase();
+    if (!query) {
+      container.innerHTML = '';
+      return;
+    }
+
+    const sb = obterSupabaseEditarPerfil();
+    if (!sb) return;
+
+    try {
+      const { data, error } = await sb
+        .from('usuarios')
+        .select('tags')
+        .not('tags', 'is', null);
+
+      if (error) throw error;
+
+      const contagem = {};
+      data.forEach(row => {
+        if (row.tags) {
+          const arr = row.tags.split('|').map(t => t.trim().toLowerCase()).filter(Boolean);
+          arr.forEach(tag => {
+            const tagFormatada = tag.startsWith('#') ? tag : `#${tag}`;
+            contagem[tagFormatada] = (contagem[tagFormatada] || 0) + 1;
+          });
+        }
+      });
+
+      const queryFormatada = query.startsWith('#') ? query : `#${query}`;
+      const resultados = Object.keys(contagem)
+        .filter(tag => tag.includes(queryFormatada))
+        .map(tag => ({ label: tag, usadores: contagem[tag] }))
+        .sort((a, b) => b.usadores - a.usadores);
+
+      if (resultados.length === 0) {
+        container.innerHTML = `
+          <div class="autocomplete-item" onclick="window.selecionarTagSugerida('${queryFormatada}')">
+            <span>${queryFormatada}</span>
+            <small>Criar nova tag (0 usadores)</small>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = resultados.map(t => `
+        <div class="autocomplete-item" onclick="window.selecionarTagSugerida('${t.label}')">
+          <span>${t.label}</span>
+          <small>${t.usadores} usadores</small>
+        </div>
+      `).join('');
+
+    } catch (err) {
+      console.warn("[EditarPerfil] Erro ao buscar contagem de tags:", err);
+    }
+  }
+
+  function selecionarTagSugerida(tagLabel) {
+    if (!global.estadoPerfilTemp.tags.includes(tagLabel)) {
+      global.estadoPerfilTemp.tags.push(tagLabel);
+      marcarAlteracaoPendente();
+      renderizarTagsAtivas();
+      renderizarPreviewDinamico();
+    }
+    const input = document.getElementById('input-new-tag');
+    if (input) input.value = '';
+    const container = document.getElementById('tags-autocomplete-container');
+    if (container) container.innerHTML = '';
+  }
+
+  function adicionarTagPerfil() {
+    const input = document.getElementById('input-new-tag');
+    if (!input) return;
+    const val = input.value.trim();
+    if (val) selecionarTagSugerida(val.startsWith('#') ? val : `#${val}`);
+  }
+
+  function removerTagPerfil(index) {
+    global.estadoPerfilTemp.tags.splice(index, 1);
+    marcarAlteracaoPendente();
+    renderizarTagsAtivas();
+    renderizarPreviewDinamico();
+  }
+
+  function renderizarTagsAtivas() {
+    const container = document.getElementById('tags-active-container');
+    if (!container || !global.estadoPerfilTemp) return;
+
+    container.innerHTML = global.estadoPerfilTemp.tags.map((t, idx) => `
+      <span class="active-tag-chip">
+        ${t} <button type="button" onclick="window.removerTagPerfil(${idx})">&times;</button>
+      </span>
+    `).join('');
+  }
+
+  function inicializarCanvasPickerPerfil() {
+    const canvas = document.getElementById('color-picker-canvas-perfil');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    function renderGradient() {
+      ctx.fillStyle = `hsl(${hueAtualCanvasPerfil}, 100%, 50%)`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      let whiteGrad = ctx.createLinearGradient(0, 0, canvas.width, 0);
+      whiteGrad.addColorStop(0, 'rgba(255,255,255,1)');
+      whiteGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = whiteGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      let blackGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      blackGrad.addColorStop(0, 'rgba(0,0,0,0)');
+      blackGrad.addColorStop(1, 'rgba(0,0,0,1)');
+      ctx.fillStyle = blackGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    renderGradient();
+
+    function pickColor(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : null);
+      const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : null);
+      if (clientX === null || clientY === null) return;
+
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+
+      const x = Math.max(0, Math.min((clientX - rect.left) * scaleX, canvas.width - 1));
+      const y = Math.max(0, Math.min((clientY - rect.top) * scaleY, canvas.height - 1));
+
+      const imgData = ctx.getImageData(x, y, 1, 1).data;
+      const hex = `#${((1 << 24) + (imgData[0] << 16) + (imgData[1] << 8) + imgData[2]).toString(16).slice(1)}`;
+
+      selecionarCorDoPickerProprioPerfil(hex);
+    }
+
+    let isDragging = false;
+    canvas.onmousedown = (e) => { isDragging = true; pickColor(e); };
+    canvas.onmousemove = (e) => { if (isDragging) pickColor(e); };
+    window.onmouseup = () => { isDragging = false; };
+
+    canvas.ontouchstart = (e) => { isDragging = true; pickColor(e); };
+    canvas.ontouchmove = (e) => { if (isDragging) pickColor(e); };
+    window.ontouchend = () => { isDragging = false; };
+  }
+
+  function atualizarMatizCanvasPerfil(val) {
+    hueAtualCanvasPerfil = val;
+    inicializarCanvasPickerPerfil();
+  }
+
+  function alternarCanalCorPerfil(canal) {
+    acionarVibracao(10);
+    canalCorAtivoPerfil = canal;
+    sincronizarExibicaoColorPickerPerfil();
+  }
+
+  function sincronizarExibicaoColorPickerPerfil() {
+    if (!global.estadoPerfilTemp) return;
+    const chave = canalCorAtivoPerfil === 'bg' ? 'cor_bg1' : canalCorAtivoPerfil === 'bg2' ? 'cor_bg2' : 'cor_verificados';
+    const hexVal = global.estadoPerfilTemp[chave] || '#ffffff';
+
+    const badge = document.getElementById('current-hex-badge-perfil');
+    const input = document.getElementById('custom-hex-input-perfil');
+
+    if (badge) badge.style.background = hexVal;
+    if (input) input.value = hexVal;
+
+    const pills = document.querySelectorAll('#edit-sec-cores .color-target-pill');
+    pills.forEach(p => p.classList.remove('active'));
+    const btnAtivo = Array.from(pills).find(p => p.getAttribute('onclick') && p.getAttribute('onclick').includes(`'${canalCorAtivoPerfil}'`));
+    if (btnAtivo) btnAtivo.classList.add('active');
+  }
+
+  function selecionarCorDoPickerProprioPerfil(hex) {
+    if (!global.estadoPerfilTemp) return;
+    const chave = canalCorAtivoPerfil === 'bg' ? 'cor_bg1' : canalCorAtivoPerfil === 'bg2' ? 'cor_bg2' : 'cor_verificados';
+    atualizarTempPerfil(chave, hex);
+    sincronizarExibicaoColorPickerPerfil();
+  }
+
+  function processarInputHexNativoPerfil(val) {
+    if (val.startsWith('#') && (val.length === 4 || val.length === 7)) {
+      selecionarCorDoPickerProprioPerfil(val);
+    }
   }
 
   function inicializarListenersFormulario() {
@@ -537,16 +1043,16 @@
       elem.addEventListener('change', marcarAlteracaoPendente);
     });
 
-    document.getElementById('zoom-banner')?.addEventListener('input', (e) => ajustarZoomMedia('banner', e.target.value));
-    document.getElementById('zoom-avatar')?.addEventListener('input', (e) => ajustarZoomMedia('avatar', e.target.value));
+    document.addEventListener('keydown', escTeclasHandler);
+  }
 
-    document.getElementById('edit-banner-url')?.addEventListener('input', (e) => atualizarPreviewBanner(e.target.value));
-    document.getElementById('edit-avatar-url')?.addEventListener('input', (e) => atualizarPreviewAvatar(e.target.value));
-    document.getElementById('edit-moldura-url')?.addEventListener('input', (e) => atualizarPreviewMoldura(e.target.value));
-
-    document.getElementById('file-banner-input')?.addEventListener('change', (e) => processarArquivoInput(e.target, 'banner'));
-    document.getElementById('file-avatar-input')?.addEventListener('change', (e) => processarArquivoInput(e.target, 'avatar'));
-    document.getElementById('file-moldura-input')?.addEventListener('change', (e) => processarArquivoInput(e.target, 'moldura'));
+  function escTeclasHandler(e) {
+    if (e.key === 'Escape') {
+      const modalCrop = document.getElementById('crop-image-modal');
+      if (!modalCrop) {
+        solicitarFecharModal();
+      }
+    }
   }
 
   function configurarDragAndDrop() {
@@ -586,109 +1092,59 @@
     });
   }
 
-  function alternarFonteMedia(tipo, origem) {
-    const btnUrl = document.getElementById(`tab-${tipo}-url`);
-    const btnFile = document.getElementById(`tab-${tipo}-file`);
-    const groupUrl = document.getElementById(`group-${tipo}-url`);
-    const groupFile = document.getElementById(`group-${tipo}-file`);
-
-    if (origem === 'url') {
-      btnUrl?.classList.add('active');
-      btnFile?.classList.remove('active');
-      if (groupUrl) groupUrl.style.display = 'block';
-      if (groupFile) groupFile.style.display = 'none';
-    } else {
-      btnFile?.classList.add('active');
-      btnUrl?.classList.remove('active');
-      if (groupFile) groupFile.style.display = 'block';
-      if (groupUrl) groupUrl.style.display = 'none';
-    }
-  }
-
   function ajustarZoomMedia(tipo, valor) {
-    const targetImg = document.getElementById(`preview-${tipo}-img`);
+    const targetImg = document.getElementById(`prev-${tipo}-img`);
     if (targetImg) targetImg.style.transform = `scale(${valor})`;
+
+    const miniTarget = document.getElementById(`mini-prev-${tipo}`);
+    if (miniTarget) miniTarget.style.transform = `scale(${valor})`;
   }
 
-  function atualizarPreviewAvatar(url) {
-    const img = document.getElementById('preview-avatar-img');
-    if (img && url.trim() !== '') img.src = url;
-  }
-
-  function atualizarPreviewBanner(url) {
-    const img = document.getElementById('preview-banner-img');
-    if (img && url.trim() !== '') img.src = url;
-  }
-
-  function atualizarPreviewMoldura(url) {
-    const img = document.getElementById('preview-frame-img');
-    if (img) {
-      if (url.trim() !== '') {
-        img.src = url;
-        img.style.display = 'block';
-      } else {
-        img.style.display = 'none';
-      }
-    }
-  }
-
+  // Upload e atualização dos previews de arquivo selecionado
   async function processarArquivoInput(input, tipo) {
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
 
-    if (file.size > 8 * 1024 * 1024) {
-      mostrarToastEdit("A imagem excede o tamanho máximo permitido de 8MB.", "alerta");
+    if (file.size > 15 * 1024 * 1024) {
+      mostrarToastEdit("A imagem excede o tamanho máximo permitido de 15MB.", "alerta");
+      input.value = '';
       return;
     }
 
-    if (tipo === 'moldura') {
-      try {
-        const dataUrlMoldura = await otimizarImagemGaleria(file, 400, 400);
-        aplicarImagemAoFormulario(dataUrlMoldura, 'moldura');
-      } catch (err) {
-        mostrarToastEdit("Erro ao carregar moldura.", "erro");
+    try {
+      if (tipo === 'moldura' || file.type === 'image/gif') {
+        mostrarToastEdit("Enviando mídia para o servidor...", "info");
+        const urlCloud = await enviarMidiaParaStorage(file, tipo);
+        atualizarTempPerfil(`${tipo}_url`, urlCloud);
+        mostrarToastEdit("Mídia atualizada com sucesso!", "sucesso");
+      } else {
+        abrirModalCropImage(file, tipo, async (croppedFile) => {
+          try {
+            mostrarToastEdit("Enviando imagem recortada...", "info");
+            const urlCloud = await enviarMidiaParaStorage(croppedFile, tipo);
+            atualizarTempPerfil(`${tipo}_url`, urlCloud);
+            mostrarToastEdit("Imagem atualizada com sucesso!", "sucesso");
+          } catch (cropErr) {
+            console.error(cropErr);
+            mostrarToastEdit("Falha ao enviar imagem recortada.", "erro");
+          }
+        });
       }
-      return;
+    } catch (err) {
+      console.error(err);
+      mostrarToastEdit("Erro ao fazer upload da imagem. Tente novamente.", "erro");
+    } finally {
+      input.value = '';
     }
-
-    if (file.type === 'image/gif') {
-      try {
-        const dataUrlGif = await otimizarImagemGaleria(file, 800, 800);
-        aplicarImagemAoFormulario(dataUrlGif, tipo);
-      } catch (err) {
-        mostrarToastEdit("Erro ao carregar GIF.", "erro");
-      }
-      return;
-    }
-
-    abrirModalCropImage(file, tipo, (croppedBase64) => {
-      aplicarImagemAoFormulario(croppedBase64, tipo);
-    });
-  }
-
-  function aplicarImagemAoFormulario(dataUrl, tipo) {
-    if (tipo === 'avatar') {
-      atualizarPreviewAvatar(dataUrl);
-      document.getElementById('edit-avatar-url').value = dataUrl;
-    } else if (tipo === 'banner') {
-      atualizarPreviewBanner(dataUrl);
-      document.getElementById('edit-banner-url').value = dataUrl;
-    } else if (tipo === 'moldura') {
-      atualizarPreviewMoldura(dataUrl);
-      document.getElementById('edit-moldura-url').value = dataUrl;
-    }
-
-    marcarAlteracaoPendente();
-    mostrarToastEdit("Mídia processada e atualizada!", "sucesso");
   }
 
   function solicitarFecharModal() {
     if (formularioComAlteracoes) {
       if (confirm("Existem alterações não salvas. Deseja realmente descartar?")) {
-        fecharModalEditarPerfil();
+        fecharModalEditarPerfil(true);
       }
     } else {
-      fecharModalEditarPerfil();
+      fecharModalEditarPerfil(true);
     }
   }
 
@@ -696,6 +1152,8 @@
     if (!forcar && formularioComAlteracoes) {
       if (!confirm("Descartar alterações pendentes?")) return;
     }
+
+    document.removeEventListener('keydown', escTeclasHandler);
 
     const container = document.getElementById('edit-perfil-full-container');
     if (container) container.remove();
@@ -706,7 +1164,7 @@
     removerBloqueioNavegacao();
   }
 
-  async function salvarAlteracoesPerfil() {
+  async function salvarPerfilCompleto() {
     const usuario = obterUsuarioLocalEditarPerfil();
     if (!usuario || usuario.id === undefined) {
       mostrarToastEdit("Sessão expirada. Faça login novamente.", "erro");
@@ -719,11 +1177,14 @@
       return;
     }
 
-    const novoUsername = document.getElementById('edit-username')?.value.trim().toLowerCase();
+    const st = global.estadoPerfilTemp;
+    if (!st) return;
+
+    const novoUsername = st.username.trim().toLowerCase();
     if (novoUsername) {
       const regexUsername = /^[a-z0-9_]{3,20}$/;
       if (!regexUsername.test(novoUsername)) {
-        mostrarToastEdit("Username inválido! Use de 3 a 20 caracteres (apenas letras, números e _).", "alerta");
+        mostrarToastEdit("Username inválido! Use de 3 a 20 caracteres (letras, números e _).", "alerta");
         return;
       }
     }
@@ -734,34 +1195,45 @@
       btnSalvar.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Salvando...`;
     }
 
-    const novoDisplayName = document.getElementById('edit-display-name')?.value.trim();
-    const novoAvatar = document.getElementById('edit-avatar-url')?.value.trim();
-    const novoBanner = document.getElementById('edit-banner-url')?.value.trim();
-    const novaMoldura = document.getElementById('edit-moldura-url')?.value.trim();
-    const novoStatus = document.getElementById('edit-status')?.value || 'online';
-    const novoStatusEmoji = document.getElementById('edit-status-emoji')?.value.trim();
-    const novoCustomStatus = document.getElementById('edit-custom-status')?.value.trim();
-    const novasTagsRaw = document.getElementById('edit-tags')?.value;
-    const novoSobre = document.getElementById('edit-sobre')?.value.trim();
+    let statusExpiraEm = null;
+    if (st.status_tempo && st.status_tempo !== 'sempre') {
+      const tempoMsMap = {
+        '30m': 30 * 60 * 1000,
+        '1h': 60 * 60 * 1000,
+        '5h': 5 * 60 * 60 * 1000,
+        '24h': 24 * 60 * 60 * 1000
+      };
+      if (tempoMsMap[st.status_tempo]) {
+        statusExpiraEm = new Date(Date.now() + tempoMsMap[st.status_tempo]).toISOString();
+      }
+    }
 
     try {
-      const selosFiltrados = selosSelecionados.filter(s => selosAutorizadosUsuario.includes(s));
+      const strSelosExibir = processarEntradaFormatada(st.verificados_exibir);
 
       const payload = {
-        display_name: novoDisplayName || null,
-        avatar_url: novoAvatar || null,
-        banner_url: novoBanner || null,
-        moldura_url: novaMoldura || null,
-        status: novoStatus,
-        status_emoji: novoStatusEmoji || '💬',
-        custom_status: novoCustomStatus || null,
-        verificados: processarEntradaFormatada(selosFiltrados),
-        sobre: novoSobre || null
+        display_name: st.display_name.trim() || null,
+        data_nascimento: st.data_nascimento || null,
+        pronome: st.pronome.trim() || null,
+        genero: st.genero.trim() || null,
+        sobre: st.sobre.trim() || null,
+        status: st.status,
+        status_emoji: st.status_emoji.trim() || null,
+        custom_status: st.custom_status.trim() || null,
+        status_expira_em: statusExpiraEm,
+        avatar_url: st.avatar_url || null,
+        banner_url: st.banner_url || null,
+        moldura_url: st.moldura_url || null,
+        wallpaper_url: st.wallpaper_url || null,
+        verificados_exibir: strSelosExibir,
+        cor_bg1: st.cor_bg1,
+        cor_bg2: st.cor_bg2,
+        cor_tema: st.cor_bg1,
+        cor_verificados: st.cor_verificados
       };
 
       if (possuiPermissaoTags(usuario)) {
-        const listaTags = extrairListaItens(novasTagsRaw);
-        payload.tags = listaTags.length > 0 ? listaTags.join(' | ') : null;
+        payload.tags = st.tags.length > 0 ? st.tags.join(' | ') : null;
       }
 
       if (novoUsername && novoUsername !== usuario.username) {
@@ -782,26 +1254,22 @@
           mostrarToastEdit("Erro ao salvar: " + error.message, "erro");
         }
       } else {
-        // Monta o objeto com as alterações mais recentes
         const dadosRetornados = (data && data.length > 0) ? data[0] : payload;
         const usuarioAtualizado = { ...usuario, ...dadosRetornados };
 
-        // Garante a persistência em todas as chaves de storage possíveis
         const jsonAtualizado = JSON.stringify(usuarioAtualizado);
         localStorage.setItem('usuario_logado', jsonAtualizado);
         if (localStorage.getItem('usuario')) localStorage.setItem('usuario', jsonAtualizado);
         if (localStorage.getItem('user')) localStorage.setItem('user', jsonAtualizado);
 
-        // Notifica o motor status.js forçando a nova escolha
         if (typeof window.atualizarStatusServidor === 'function') {
-          await window.atualizarStatusServidor(novoStatus, true);
+          await window.atualizarStatusServidor(st.status, true);
         }
 
         formularioComAlteracoes = false;
         mostrarToastEdit("Perfil atualizado com sucesso!", "sucesso");
         fecharModalEditarPerfil(true);
 
-        // Atualização reativa das views de interface ativas
         if (typeof window.abrirPerfil === 'function') {
           window.abrirPerfil(usuarioAtualizado);
         } else if (typeof window.renderHomeCard === 'function') {
@@ -820,11 +1288,24 @@
   }
 
   // Exportações Globais
-  window.abrirModalEditarPerfil = abrirModalEditarPerfil;
-  window.fecharModalEditarPerfil = fecharModalEditarPerfil;
-  window.solicitarFecharModal = solicitarFecharModal;
-  window.alternarFonteMedia = alternarFonteMedia;
-  window.alternarSeloVerificado = alternarSeloVerificado;
-  window.salvarAlteracoesPerfil = salvarAlteracoesPerfil;
+  global.abrirModalEditarPerfil = abrirModalEditarPerfil;
+  global.fecharModalEditarPerfil = fecharModalEditarPerfil;
+  global.solicitarFecharModal = solicitarFecharModal;
+  global.mudarAbaPerfil = mudarAbaPerfil;
+  global.atualizarTempPerfil = atualizarTempPerfil;
+  global.selecionarEstadoPresenca = selecionarEstadoPresenca;
+  global.filtrarAutocompleteTagsRealtime = filtrarAutocompleteTagsRealtime;
+  global.selecionarTagSugerida = selecionarTagSugerida;
+  global.adicionarTagPerfil = adicionarTagPerfil;
+  global.removerTagPerfil = removerTagPerfil;
+  global.ajustarZoomMedia = ajustarZoomMedia;
+  global.processarArquivoInput = processarArquivoInput;
+  global.alternarSeloVerificado = alternarSeloVerificado;
+  global.alternarCanalCorPerfil = alternarCanalCorPerfil;
+  global.atualizarMatizCanvasPerfil = atualizarMatizCanvasPerfil;
+  global.selecionarCorDoPickerProprioPerfil = selecionarCorDoPickerProprioPerfil;
+  global.processarInputHexNativoPerfil = processarInputHexNativoPerfil;
+  global.salvarAlteracoesPerfil = salvarPerfilCompleto;
+  global.salvarPerfilCompleto = salvarPerfilCompleto;
 
-})();
+})(typeof window !== 'undefined' ? window : this);

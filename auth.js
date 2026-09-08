@@ -1,6 +1,6 @@
 // ==========================================================================
 // MÓDULO DE AUTENTICAÇÃO E REGISTRO (auth.js) - SPHERE PRO v5.2
-// Turnstile Anti-Bot, Rate-Limiting Local, Troca Direta & Galeria
+// Turnstile Anti-Bot, Rate-Limiting Local, Reativação de Conta & Gestão
 // ==========================================================================
 
 const SUPABASE_URL = "https://phvnxlogznbplynwflch.supabase.co";
@@ -25,7 +25,7 @@ const RATE_LIMIT_CONFIG = {
 window.onloadTurnstileCallback = function () {
   if (window.turnstile) {
     window.turnstile.render('#turnstile-container', {
-      sitekey: '1x00000000000000000000AA', // Substitua pela sua chave pública Turnstile
+      sitekey: '1x00000000000000000000AA',
       callback: function (token) {
         turnstileToken = token;
       }
@@ -43,7 +43,7 @@ function sanitizarHtmlAuth(str) {
     .replace(/'/g, '&#039;');
 }
 
-// Controle de Rate Limiting Local contra Brute-Force
+// Rate Limiting Local contra Brute-Force
 function verificarRateLimit() {
   const agora = Date.now();
   let tentativas = JSON.parse(localStorage.getItem('sphere_auth_attempts') || '[]');
@@ -197,7 +197,7 @@ function validarUsername(input) {
   }, 350);
 }
 
-// SELEÇÃO DE AVATAR LOCAL DA GALERIA
+// Seleção de Avatar Local com Cropper
 function abrirSeletorGaleriaAvatar() {
   const inputEl = document.getElementById('input-galeria-avatar');
   if (inputEl) inputEl.click();
@@ -288,7 +288,7 @@ function atualizarPreviewAvatarDOM(src) {
   if (preview) preview.src = src;
 }
 
-// GERENCIAMENTO DE CONTAS SALVAS
+// Gerenciamento de Contas Salvas
 function carregarContasSalvas() {
   const container = document.getElementById('contas-salvas-container');
   if (!container) return;
@@ -326,16 +326,30 @@ function carregarContasSalvas() {
   }
 }
 
-function trocarContaDiretoLocal(username) {
+async function trocarContaDiretoLocal(username) {
   try {
     const contas = JSON.parse(localStorage.getItem('contas_salvas_lista')) || [];
     const contaAlvo = contas.find(c => c.username === username);
 
     if (contaAlvo) {
-      exibirMensagem(`Entrando como @${username}...`, 'success');
-      setTimeout(() => {
-        concluirAutenticacaoESessao(contaAlvo);
-      }, 300);
+      // Re-valida o status da conta no servidor
+      if (supabaseClient) {
+        const { data: dbUser } = await supabaseClient
+          .from('usuarios')
+          .select('*')
+          .eq('id', contaAlvo.id)
+          .maybeSingle();
+
+        if (dbUser) {
+          const autorizado = await validarStatusEGerenciarReativacao(dbUser);
+          if (autorizado) {
+            concluirAutenticacaoESessao(dbUser);
+          }
+          return;
+        }
+      }
+
+      concluirAutenticacaoESessao(contaAlvo);
     }
   } catch (err) {
     console.error("Erro ao alternar conta:", err);
@@ -370,7 +384,7 @@ function removerContaSalva(username) {
   }
 }
 
-// WIZARD EM ETAPAS
+// Wizard em Etapas
 function resetarWizardCriacao() {
   etapaCriacaoAtual = 1;
   usernameEstaLivre = false;
@@ -488,7 +502,87 @@ function abrirVerificacaoTermos(tipo) {
   }
 }
 
-// REGISTRO DE CONTA
+// Modal de Reativação de Conta Desativada
+function abrirModalReativacaoConta(usuario, aoConfirmar) {
+  const modalAntigo = document.getElementById('modal-reativar-conta');
+  if (modalAntigo) modalAntigo.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-reativar-conta';
+  modal.className = 'config-modal-overlay';
+  modal.style.zIndex = '10000';
+
+  modal.innerHTML = `
+    <div class="config-modal-card">
+      <div class="config-modal-header" style="color: #00d2ff;">
+        <i class="fa-solid fa-user-check"></i>
+        <span>Sua conta está desativada</span>
+      </div>
+      <p class="config-modal-desc">
+        Identificamos que a conta de <strong>@${sanitizarHtmlAuth(usuario.username)}</strong> está desativada. Deseja reativar sua conta e voltar a usar o Sphere agora?
+      </p>
+
+      <div class="config-modal-actions">
+        <button class="btn-config-modal sec" id="btn-cancelar-reativacao">Cancelar</button>
+        <button class="btn-config-modal primary" id="btn-confirmar-reativacao" style="background:#00d2ff; color:#000;">Reativar Minha Conta</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  document.getElementById('btn-cancelar-reativacao').onclick = () => modal.remove();
+
+  document.getElementById('btn-confirmar-reativacao').onclick = async () => {
+    const btn = document.getElementById('btn-confirmar-reativacao');
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Reativando...`;
+
+    try {
+      if (supabaseClient) {
+        await supabaseClient
+          .from('usuarios')
+          .update({ status_conta: 'ativa' })
+          .eq('id', usuario.id);
+      }
+
+      usuario.status_conta = 'ativa';
+      modal.remove();
+      if (typeof aoConfirmar === 'function') aoConfirmar(usuario);
+    } catch (e) {
+      exibirMensagem("Erro ao reativar conta. Tente novamente.");
+      btn.disabled = false;
+      btn.textContent = 'Reativar Minha Conta';
+    }
+  };
+}
+
+// Validador Geral de Status da Conta
+async function validarStatusEGerenciarReativacao(usuario) {
+  if (!usuario) return false;
+
+  if (usuario.is_banned || usuario.status_conta === 'banida') {
+    exibirMensagem("Esta conta foi banida permanentemente por violar as diretrizes.");
+    return false;
+  }
+
+  if (usuario.status_conta === 'suspensa') {
+    exibirMensagem("Esta conta está temporariamente suspensa.");
+    return false;
+  }
+
+  if (usuario.status_conta === 'desativada') {
+    return new Promise((resolve) => {
+      abrirModalReativacaoConta(usuario, (usuarioAtualizado) => {
+        resolve(true);
+      });
+    });
+  }
+
+  return true;
+}
+
+// Registro de Conta
 async function criarConta() {
   limparMensagens();
   if (!verificarRateLimit()) return;
@@ -530,6 +624,7 @@ async function criarConta() {
       data_nascimento: dataNascimento,
       avatar_url: avatarBase64Selecionado || null,
       status: 'online',
+      status_conta: 'ativa',
       created_at: new Date().toISOString()
     };
 
@@ -559,7 +654,7 @@ async function criarConta() {
   }
 }
 
-// LOGIN
+// Login
 async function entrar() {
   limparMensagens();
   if (!verificarRateLimit()) return;
@@ -589,10 +684,15 @@ async function entrar() {
 
     if (error || !data) {
       exibirMensagem("Credenciais incorretas. Verifique seu login e senha.");
-    } else if (data.is_banned) {
-      exibirMensagem("Esta conta está suspensa por violar as diretrizes da comunidade.");
     } else {
-      concluirAutenticacaoESessao(data);
+      const eValido = await validarStatusEGerenciarReativacao(data);
+      if (eValido) {
+        // Limpa flag de relog caso exista
+        if (data.requer_relog) {
+          await supabaseClient.from('usuarios').update({ requer_relog: false }).eq('id', data.id);
+        }
+        concluirAutenticacaoESessao(data);
+      }
     }
   } catch (err) {
     exibirMensagem("Falha de conexão com o servidor.");
@@ -702,7 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Exportações
+// Exportações Globais
 window.mostrarTela = mostrarTela;
 window.validarUsername = validarUsername;
 window.alternarVisibilidadeSenha = alternarVisibilidadeSenha;
@@ -717,3 +817,4 @@ window.entrar = entrar;
 window.entrarComGoogle = entrarComGoogle;
 window.sair = sair;
 window.removerContaSalva = removerContaSalva;
+window.validarStatusEGerenciarReativacao = validarStatusEGerenciarReativacao;

@@ -1,9 +1,9 @@
 // ==========================================================================
-// CHAT VOZ & TELA MODULE (chatvoz.js) - WEBRTC ENGINE & GIF VAD REACTION
-// Project Z v5.0 | Peer-to-Peer Mesh, Supabase Signaling & Dynamic DSP
+// CHAT VOZ & TRANSMISSÃO DE TELA (chatvoz.js) - SPHERE PRO v5.2
+// WebRTC Engine, Screen Share Panel & Dynamic VAD Reaction
 // ==========================================================================
 
-(function () {
+(function (global) {
   'use strict';
 
   // Configuração Padrão dos Servidores ICE (STUN/TURN)
@@ -20,7 +20,7 @@
   };
 
   // Estado Global Unificado e Reativo da Chamada
-  window.chatVozState = {
+  global.chatVozState = {
     ativo: false,
     chamando: false,
     recebendoChamada: false,
@@ -39,6 +39,7 @@
     micMutado: false,
     foneMutado: false,
     transmitindoTela: false,
+    quemEstaTransmitindo: '', // Nome/Username de quem transmite
     audioContext: null,
     analyserLocal: null,
     analyserRemote: null,
@@ -51,7 +52,13 @@
 
   // Obtenção Segura do Supabase Client
   function obterSupabaseVoz() {
-    return window.supabaseClient || window.supabase || window.sb || null;
+    return global.supabaseClient || global.supabase || global.sb || null;
+  }
+
+  // Helper de Sanitização XSS
+  function sanitizar(str) {
+    if (!str) return '';
+    return String(str).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   // Injeção Dinâmica do CSS Avançado
@@ -65,10 +72,10 @@
         bottom: 24px;
         right: 24px;
         width: 360px;
-        background: rgba(15, 8, 18, 0.96);
+        background: rgba(14, 7, 18, 0.95);
         border: 1px solid rgba(255, 45, 85, 0.35);
         border-radius: 24px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95), 0 0 30px rgba(255, 45, 85, 0.15);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95), 0 0 30px rgba(255, 45, 85, 0.18);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         z-index: 4500;
@@ -175,9 +182,9 @@
       }
 
       .btn-chatvoz-icon:hover {
-        background: var(--chat-accent, #ff2d55);
+        background: #ff2d55;
         color: #ffffff;
-        border-color: var(--chat-accent, #ff2d55);
+        border-color: #ff2d55;
         transform: scale(1.08);
       }
 
@@ -189,7 +196,7 @@
         gap: 14px;
       }
 
-      /* Compartilhamento de Tela Video Display */
+      /* Painel de Transmissão de Tela (Acima dos Avatares) */
       .chatvoz-screenshare-container {
         width: 100%;
         height: 190px;
@@ -198,14 +205,16 @@
         overflow: hidden;
         display: none;
         position: relative;
-        border: 1px solid rgba(255, 45, 85, 0.4);
-        box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+        border: 1px solid rgba(255, 45, 85, 0.5);
+        box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 8px 20px rgba(0, 0, 0, 0.6);
+        margin-bottom: 4px;
       }
 
       .chatvoz-screenshare-video {
         width: 100%;
         height: 100%;
         object-fit: contain;
+        background: #050206;
       }
 
       .chatvoz-screenshare-badge {
@@ -214,33 +223,36 @@
         left: 10px;
         background: rgba(255, 45, 85, 0.9);
         color: #ffffff;
-        font-size: 0.68rem;
+        font-size: 0.7rem;
         font-weight: 800;
-        padding: 3px 8px;
+        padding: 4px 10px;
         border-radius: 8px;
         display: flex;
         align-items: center;
         gap: 6px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-        backdrop-filter: blur(4px);
+        backdrop-filter: blur(6px);
+        z-index: 2;
       }
 
       .chatvoz-screenshare-fullscreen-btn {
         position: absolute;
         bottom: 10px;
         right: 10px;
-        background: rgba(10, 5, 12, 0.8);
+        background: rgba(14, 7, 18, 0.85);
         border: 1px solid rgba(255, 255, 255, 0.25);
         color: #ffffff;
-        padding: 5px 8px;
+        padding: 6px 10px;
         border-radius: 8px;
         cursor: pointer;
         font-size: 0.82rem;
-        transition: background 0.2s ease;
+        transition: all 0.2s ease;
+        z-index: 2;
       }
 
       .chatvoz-screenshare-fullscreen-btn:hover {
-        background: var(--chat-accent, #ff2d55);
+        background: #ff2d55;
+        border-color: #ff2d55;
       }
 
       /* Grid dos Participantes e Reatividade VAD GIF */
@@ -295,14 +307,14 @@
         right: 0;
         background: #ff4757;
         color: #ffffff;
-        width: 20px;
-        height: 20px;
+        width: 22px;
+        height: 22px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.65rem;
-        border: 2px solid #0f0812;
+        font-size: 0.68rem;
+        border: 2px solid #0e0712;
       }
 
       .chatvoz-participant-label {
@@ -343,7 +355,7 @@
 
       .chatvoz-btn-ctrl:hover {
         background: rgba(255, 45, 85, 0.25);
-        border-color: var(--chat-accent, #ff2d55);
+        border-color: #ff2d55;
         transform: scale(1.06);
       }
 
@@ -367,7 +379,7 @@
         transform: scale(1.08);
       }
 
-      /* Painel de Dispositivos e Sensibilidade VAD */
+      /* Painel de Dispositivos e Configuração */
       .chatvoz-settings-panel {
         width: 100%;
         background: rgba(0, 0, 0, 0.45);
@@ -403,7 +415,7 @@
       .chatvoz-incoming-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(8, 4, 10, 0.88);
+        background: rgba(6, 2, 8, 0.88);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
         z-index: 5000;
@@ -422,7 +434,7 @@
       .chatvoz-incoming-card {
         width: 100%;
         max-width: 340px;
-        background: #160d1b;
+        background: #140718;
         border: 1px solid rgba(255, 45, 85, 0.4);
         border-radius: 24px;
         padding: 28px 20px;
@@ -431,7 +443,7 @@
         align-items: center;
         text-align: center;
         gap: 16px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.9), 0 0 30px rgba(255,45,85,0.2);
       }
 
       .chatvoz-incoming-avatar {
@@ -439,7 +451,7 @@
         height: 88px;
         border-radius: 50%;
         object-fit: cover;
-        border: 3px solid var(--chat-accent, #ff2d55);
+        border: 3px solid #ff2d55;
         box-shadow: 0 0 24px rgba(255, 45, 85, 0.5);
         animation: pulseAvatarCall 1.4s infinite;
       }
@@ -511,32 +523,32 @@
 
   // Inicialização e Entrada na Chamada de Voz
   async function iniciarChamadaVoz(usuarioTarget) {
-    if (window.chatVozState.ativo || window.chatVozState.chamando) {
+    if (global.chatVozState.ativo || global.chatVozState.chamando) {
       alert("Você já possui uma chamada ou solicitação de áudio em andamento.");
       return;
     }
 
-    const me = typeof window.obterUsuarioLogadoChat === 'function'
-      ? window.obterUsuarioLogadoChat()
-      : JSON.parse(localStorage.getItem('usuario_logado') || '{}');
+    const me = typeof global.obterUsuarioLogadoChat === 'function'
+      ? global.obterUsuarioLogadoChat()
+      : JSON.parse(localStorage.getItem('usuario_logado') || localStorage.getItem('usuario') || '{}');
 
     if (!me || !me.id) {
       alert("Sessão inválida. Faça login novamente.");
       return;
     }
 
-    window.chatVozState.ativo = true;
-    window.chatVozState.chamando = true;
-    window.chatVozState.alvoId = Number(usuarioTarget.id);
-    window.chatVozState.alvoNome = usuarioTarget.nome || usuarioTarget.display_name || usuarioTarget.username || 'Contato';
-    window.chatVozState.alvoUsername = usuarioTarget.username || 'user';
+    global.chatVozState.ativo = true;
+    global.chatVozState.chamando = true;
+    global.chatVozState.alvoId = Number(usuarioTarget.id);
+    global.chatVozState.alvoNome = usuarioTarget.nome || usuarioTarget.display_name || usuarioTarget.username || 'Contato';
+    global.chatVozState.alvoUsername = usuarioTarget.username || 'user';
 
-    const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(window.chatVozState.alvoNome)}`;
-    window.chatVozState.alvoAvatar = (usuarioTarget.avatar_url && usuarioTarget.avatar_url.trim() !== '') ? usuarioTarget.avatar_url : defaultAvatar;
-    window.chatVozState.alvoAvatarGif = usuarioTarget.avatar_gif_url || usuarioTarget.avatar_url || window.chatVozState.alvoAvatar;
+    const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(global.chatVozState.alvoNome)}`;
+    global.chatVozState.alvoAvatar = (usuarioTarget.avatar_url && usuarioTarget.avatar_url.trim() !== '') ? usuarioTarget.avatar_url : defaultAvatar;
+    global.chatVozState.alvoAvatarGif = usuarioTarget.avatar_gif_url || usuarioTarget.avatar_url || global.chatVozState.alvoAvatar;
 
-    window.chatVozState.myAvatar = me.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(me.username || 'Eu')}`;
-    window.chatVozState.myAvatarGif = me.avatar_gif_url || me.avatar_url || window.chatVozState.myAvatar;
+    global.chatVozState.myAvatar = me.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(me.username || 'Eu')}`;
+    global.chatVozState.myAvatarGif = me.avatar_gif_url || me.avatar_url || global.chatVozState.myAvatar;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -548,12 +560,12 @@
         video: false
       });
 
-      window.chatVozState.localStream = stream;
+      global.chatVozState.localStream = stream;
       renderizarWidgetVoz();
       tornarWidgetArrastavel();
       inicializarAudioContextEVAD(stream);
       popularDispositivosEntrada();
-      iniciarSinalizacaoWebRTC(me.id, window.chatVozState.alvoId, true);
+      iniciarSinalizacaoWebRTC(me.id, global.chatVozState.alvoId, true);
 
     } catch (err) {
       console.error("[ChatVoz] Falha ao obter microfone:", err);
@@ -574,53 +586,61 @@
     const maxId = Math.max(meId, targetId);
     const channelName = `realtime_call_${minId}_${maxId}`;
 
-    if (window.chatVozState.signalingChannel) {
-      sb.removeChannel(window.chatVozState.signalingChannel);
+    if (global.chatVozState.signalingChannel) {
+      sb.removeChannel(global.chatVozState.signalingChannel);
     }
 
     const pc = new RTCPeerConnection(RTC_CONFIG);
-    window.chatVozState.peerConnection = pc;
+    global.chatVozState.peerConnection = pc;
 
-    // Adiciona tracks locais ao PeerConnection
-    if (window.chatVozState.localStream) {
-      window.chatVozState.localStream.getTracks().forEach(track => {
-        pc.addTrack(track, window.chatVozState.localStream);
+    if (global.chatVozState.localStream) {
+      global.chatVozState.localStream.getTracks().forEach(track => {
+        pc.addTrack(track, global.chatVozState.localStream);
       });
     }
 
-    // Recebe tracks remotos
     pc.ontrack = (event) => {
       if (event.streams && event.streams[0]) {
-        window.chatVozState.remoteStream = event.streams[0];
-        const audioPlayer = obterAudioRemotoElemento();
-        audioPlayer.srcObject = event.streams[0];
+        const streamRecebida = event.streams[0];
+        const videoTrack = streamRecebida.getVideoTracks()[0];
 
-        // Processa VAD do áudio remoto
-        analisarAudioRemoto(event.streams[0]);
+        if (videoTrack) {
+          // Transmissão de Tela Recebida
+          const boxVideo = document.getElementById('chatvoz-screenshare-box');
+          const videoEl = document.getElementById('chatvoz-screen-video');
+          const txtTransmissor = document.getElementById('chatvoz-screenshare-user');
 
-        const statusDot = document.getElementById('chatvoz-status-dot');
-        const statusTitle = document.getElementById('chatvoz-status-title-text');
-        if (statusDot) statusDot.className = 'chatvoz-status-dot';
-        if (statusTitle) statusTitle.innerText = `@${window.chatVozState.alvoNome}`;
+          if (videoEl) videoEl.srcObject = streamRecebida;
+          if (boxVideo) boxVideo.style.display = 'block';
+          if (txtTransmissor) txtTransmissor.innerText = global.chatVozState.alvoNome;
+        } else {
+          // Áudio Remoto
+          global.chatVozState.remoteStream = streamRecebida;
+          const audioPlayer = obterAudioRemotoElemento();
+          audioPlayer.srcObject = streamRecebida;
+
+          analisarAudioRemoto(streamRecebida);
+
+          const statusDot = document.getElementById('chatvoz-status-dot');
+          const statusTitle = document.getElementById('chatvoz-status-title-text');
+          if (statusDot) statusDot.className = 'chatvoz-status-dot';
+          if (statusTitle) statusTitle.innerText = `@${global.chatVozState.alvoNome}`;
+        }
       }
     };
 
-    // Envia Candidatos ICE para o outro Peer
     pc.onicecandidate = (event) => {
-      if (event.candidate && window.chatVozState.signalingChannel) {
-        window.chatVozState.signalingChannel.send({
+      if (event.candidate && global.chatVozState.signalingChannel) {
+        global.chatVozState.signalingChannel.send({
           type: 'broadcast',
           event: 'signal',
-          payload: {
-            remetente_id: meId,
-            ice: event.candidate
-          }
+          payload: { remetente_id: meId, ice: event.candidate }
         });
       }
     };
 
     const channel = sb.channel(channelName);
-    window.chatVozState.signalingChannel = channel;
+    global.chatVozState.signalingChannel = channel;
 
     channel.on('broadcast', { event: 'signal' }, async (payload) => {
       const data = payload.payload;
@@ -679,7 +699,7 @@
       <div class="chatvoz-header" id="chatvoz-header-drag">
         <div class="chatvoz-status-title">
           <div class="chatvoz-status-dot connecting" id="chatvoz-status-dot"></div>
-          <span id="chatvoz-status-title-text">Conectando a @${window.chatVozState.alvoNome}...</span>
+          <span id="chatvoz-status-title-text">Conectando a @${sanitizar(global.chatVozState.alvoNome)}...</span>
         </div>
         <div class="chatvoz-header-actions" onclick="event.stopPropagation()">
           <button class="btn-chatvoz-icon" onclick="window.alternarPainelAjustesVoz()" title="Ajustes de Áudio">
@@ -696,9 +716,11 @@
 
       <div class="chatvoz-body">
         <div class="chatvoz-screenshare-container" id="chatvoz-screenshare-box">
-          <div class="chatvoz-screenshare-badge"><i class="fa-solid fa-desktop"></i> TRANSMISSÃO AO VIVO</div>
+          <div class="chatvoz-screenshare-badge">
+            <i class="fa-solid fa-desktop"></i> Transmitindo: <span id="chatvoz-screenshare-user">Você</span>
+          </div>
           <video id="chatvoz-screen-video" autoplay playsinline class="chatvoz-screenshare-video"></video>
-          <button class="chatvoz-screenshare-fullscreen-btn" onclick="window.expandirTelaCheiaStream()" title="Tela Cheia">
+          <button class="chatvoz-screenshare-fullscreen-btn" onclick="window.expandirTelaCheiaStream()" title="Tela Cheia (Opcional)">
             <i class="fa-solid fa-expand"></i>
           </button>
         </div>
@@ -706,7 +728,7 @@
         <div class="chatvoz-participants-grid">
           <div class="chatvoz-avatar-box" id="avatar-box-me">
             <div class="chatvoz-avatar-img-wrap">
-              <img src="${window.chatVozState.myAvatar}" class="chatvoz-avatar-img" id="avatar-img-me" alt="Eu">
+              <img src="${global.chatVozState.myAvatar}" class="chatvoz-avatar-img" id="avatar-img-me" alt="Eu">
               <div class="chatvoz-mute-badge" id="badge-mute-me" style="display:none;"><i class="fa-solid fa-microphone-slash"></i></div>
             </div>
             <span class="chatvoz-participant-label">Você</span>
@@ -714,10 +736,10 @@
 
           <div class="chatvoz-avatar-box" id="avatar-box-target">
             <div class="chatvoz-avatar-img-wrap">
-              <img src="${window.chatVozState.alvoAvatar}" class="chatvoz-avatar-img" id="avatar-img-target" alt="Target">
+              <img src="${global.chatVozState.alvoAvatar}" class="chatvoz-avatar-img" id="avatar-img-target" alt="Target">
               <div class="chatvoz-mute-badge" id="badge-mute-target" style="display:none;"><i class="fa-solid fa-volume-xmark"></i></div>
             </div>
-            <span class="chatvoz-participant-label">${window.chatVozState.alvoNome}</span>
+            <span class="chatvoz-participant-label">${sanitizar(global.chatVozState.alvoNome)}</span>
           </div>
         </div>
 
@@ -748,15 +770,15 @@
 
     document.body.appendChild(widget);
 
-    if (window.chatVozState.posicaoWidget.top && window.chatVozState.posicaoWidget.left) {
-      widget.style.top = window.chatVozState.posicaoWidget.top;
-      widget.style.left = window.chatVozState.posicaoWidget.left;
+    if (global.chatVozState.posicaoWidget.top && global.chatVozState.posicaoWidget.left) {
+      widget.style.top = global.chatVozState.posicaoWidget.top;
+      widget.style.left = global.chatVozState.posicaoWidget.left;
       widget.style.bottom = 'auto';
       widget.style.right = 'auto';
     }
   }
 
-  // Tornar Widget Arrastável com Suporte Touch/Mouse e Hardware Acceleration
+  // Tornar Widget Arrastável com Suporte Touch/Mouse
   function tornarWidgetArrastavel() {
     const widget = document.getElementById('chatvoz-widget');
     const header = document.getElementById('chatvoz-header-drag');
@@ -792,7 +814,7 @@
       widget.style.bottom = 'auto';
       widget.style.right = 'auto';
 
-      window.chatVozState.posicaoWidget = { top: `${top}px`, left: `${left}px` };
+      global.chatVozState.posicaoWidget = { top: `${top}px`, left: `${left}px` };
     }
 
     function closeDragElement() {
@@ -826,7 +848,7 @@
       widget.style.bottom = 'auto';
       widget.style.right = 'auto';
 
-      window.chatVozState.posicaoWidget = { top: `${top}px`, left: `${left}px` };
+      global.chatVozState.posicaoWidget = { top: `${top}px`, left: `${left}px` };
     }
 
     function closeTouchDrag() {
@@ -850,8 +872,8 @@
       source.connect(analyser);
       analyser.fftSize = 256;
 
-      window.chatVozState.audioContext = audioContext;
-      window.chatVozState.analyserLocal = analyser;
+      global.chatVozState.audioContext = audioContext;
+      global.chatVozState.analyserLocal = analyser;
 
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
@@ -860,7 +882,7 @@
       const imgMe = document.getElementById('avatar-img-me');
 
       function LoopVADLocal() {
-        if (!window.chatVozState.ativo) return;
+        if (!global.chatVozState.ativo) return;
 
         analyser.getByteFrequencyData(dataArray);
         let soma = 0;
@@ -868,19 +890,19 @@
         let media = soma / bufferLength;
 
         if (boxMe && imgMe) {
-          if (media > 14 && !window.chatVozState.micMutado) {
+          if (media > 14 && !global.chatVozState.micMutado) {
             boxMe.classList.add('speaking');
-            if (imgMe.src !== window.chatVozState.myAvatarGif) {
-              imgMe.src = window.chatVozState.myAvatarGif;
+            if (imgMe.src !== global.chatVozState.myAvatarGif) {
+              imgMe.src = global.chatVozState.myAvatarGif;
             }
           } else {
             boxMe.classList.remove('speaking');
-            if (imgMe.src !== window.chatVozState.myAvatar) {
-              imgMe.src = window.chatVozState.myAvatar;
+            if (imgMe.src !== global.chatVozState.myAvatar) {
+              imgMe.src = global.chatVozState.myAvatar;
             }
           }
         }
-        window.chatVozState.vadAnimationId = requestAnimationFrame(LoopVADLocal);
+        global.chatVozState.vadAnimationId = requestAnimationFrame(LoopVADLocal);
       }
 
       LoopVADLocal();
@@ -892,13 +914,13 @@
   // Análise de Áudio Remoto para Alternância de GIF VAD
   function analisarAudioRemoto(stream) {
     try {
-      if (!window.chatVozState.audioContext) return;
-      const analyser = window.chatVozState.audioContext.createAnalyser();
-      const source = window.chatVozState.audioContext.createMediaStreamSource(stream);
+      if (!global.chatVozState.audioContext) return;
+      const analyser = global.chatVozState.audioContext.createAnalyser();
+      const source = global.chatVozState.audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
       analyser.fftSize = 256;
 
-      window.chatVozState.analyserRemote = analyser;
+      global.chatVozState.analyserRemote = analyser;
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
 
@@ -906,7 +928,7 @@
       const imgTarget = document.getElementById('avatar-img-target');
 
       function LoopVADRemoto() {
-        if (!window.chatVozState.ativo) return;
+        if (!global.chatVozState.ativo) return;
 
         analyser.getByteFrequencyData(dataArray);
         let soma = 0;
@@ -914,15 +936,15 @@
         let media = soma / bufferLength;
 
         if (boxTarget && imgTarget) {
-          if (media > 14 && !window.chatVozState.foneMutado) {
+          if (media > 14 && !global.chatVozState.foneMutado) {
             boxTarget.classList.add('speaking');
-            if (imgTarget.src !== window.chatVozState.alvoAvatarGif) {
-              imgTarget.src = window.chatVozState.alvoAvatarGif;
+            if (imgTarget.src !== global.chatVozState.alvoAvatarGif) {
+              imgTarget.src = global.chatVozState.alvoAvatarGif;
             }
           } else {
             boxTarget.classList.remove('speaking');
-            if (imgTarget.src !== window.chatVozState.alvoAvatar) {
-              imgTarget.src = window.chatVozState.alvoAvatar;
+            if (imgTarget.src !== global.chatVozState.alvoAvatar) {
+              imgTarget.src = global.chatVozState.alvoAvatar;
             }
           }
         }
@@ -937,60 +959,61 @@
 
   // Alternar Mute do Microfone Local
   function alternarMuteMic() {
-    if (!window.chatVozState.localStream) return;
-    const audioTrack = window.chatVozState.localStream.getAudioTracks()[0];
+    if (!global.chatVozState.localStream) return;
+    const audioTrack = global.chatVozState.localStream.getAudioTracks()[0];
 
     if (audioTrack) {
-      window.chatVozState.micMutado = !window.chatVozState.micMutado;
-      audioTrack.enabled = !window.chatVozState.micMutado;
+      global.chatVozState.micMutado = !global.chatVozState.micMutado;
+      audioTrack.enabled = !global.chatVozState.micMutado;
 
       const btn = document.getElementById('btn-chatvoz-mic');
       const badge = document.getElementById('badge-mute-me');
       const boxMe = document.getElementById('avatar-box-me');
 
       if (btn) {
-        btn.classList.toggle('active', window.chatVozState.micMutado);
-        btn.innerHTML = window.chatVozState.micMutado 
+        btn.classList.toggle('active', global.chatVozState.micMutado);
+        btn.innerHTML = global.chatVozState.micMutado 
           ? '<i class="fa-solid fa-microphone-slash"></i>' 
           : '<i class="fa-solid fa-microphone"></i>';
       }
 
-      if (badge) badge.style.display = window.chatVozState.micMutado ? 'flex' : 'none';
-      if (boxMe) boxMe.classList.toggle('muted', window.chatVozState.micMutado);
+      if (badge) badge.style.display = global.chatVozState.micMutado ? 'flex' : 'none';
+      if (boxMe) boxMe.classList.toggle('muted', global.chatVozState.micMutado);
     }
   }
 
   // Alternar Ensurdecer Áudio Remoto
   function alternarMuteFone() {
-    window.chatVozState.foneMutado = !window.chatVozState.foneMutado;
+    global.chatVozState.foneMutado = !global.chatVozState.foneMutado;
     const audioPlayer = obterAudioRemotoElemento();
-    audioPlayer.muted = window.chatVozState.foneMutado;
+    audioPlayer.muted = global.chatVozState.foneMutado;
 
     const btn = document.getElementById('btn-chatvoz-fone');
     const badge = document.getElementById('badge-mute-target');
     const boxTarget = document.getElementById('avatar-box-target');
 
     if (btn) {
-      btn.classList.toggle('active', window.chatVozState.foneMutado);
-      btn.innerHTML = window.chatVozState.foneMutado 
+      btn.classList.toggle('active', global.chatVozState.foneMutado);
+      btn.innerHTML = global.chatVozState.foneMutado 
         ? '<i class="fa-solid fa-volume-xmark"></i>' 
         : '<i class="fa-solid fa-headphones"></i>';
     }
 
-    if (badge) badge.style.display = window.chatVozState.foneMutado ? 'flex' : 'none';
-    if (boxTarget) boxTarget.classList.toggle('muted', window.chatVozState.foneMutado);
+    if (badge) badge.style.display = global.chatVozState.foneMutado ? 'flex' : 'none';
+    if (boxTarget) boxTarget.classList.toggle('muted', global.chatVozState.foneMutado);
   }
 
-  // Compartilhamento e Transmissão de Tela
+  // Compartilhamento e Transmissão de Tela com Exibição em Painel
   async function alternarTransmissaoTela() {
     const boxVideo = document.getElementById('chatvoz-screenshare-box');
     const videoEl = document.getElementById('chatvoz-screen-video');
+    const txtTransmissor = document.getElementById('chatvoz-screenshare-user');
 
-    if (window.chatVozState.transmitindoTela) {
-      if (window.chatVozState.screenStream) {
-        window.chatVozState.screenStream.getTracks().forEach(t => t.stop());
+    if (global.chatVozState.transmitindoTela) {
+      if (global.chatVozState.screenStream) {
+        global.chatVozState.screenStream.getTracks().forEach(t => t.stop());
       }
-      window.chatVozState.transmitindoTela = false;
+      global.chatVozState.transmitindoTela = false;
       if (boxVideo) boxVideo.style.display = 'none';
       document.getElementById('btn-chatvoz-screen')?.classList.remove('active');
     } else {
@@ -1000,22 +1023,22 @@
           audio: true
         });
 
-        window.chatVozState.screenStream = screenStream;
-        window.chatVozState.transmitindoTela = true;
+        global.chatVozState.screenStream = screenStream;
+        global.chatVozState.transmitindoTela = true;
 
         if (videoEl) videoEl.srcObject = screenStream;
         if (boxVideo) boxVideo.style.display = 'block';
+        if (txtTransmissor) txtTransmissor.innerText = 'Você';
         document.getElementById('btn-chatvoz-screen')?.classList.add('active');
 
         const videoTrack = screenStream.getVideoTracks()[0];
         
-        // Se houver conexão WebRTC, troca o track no Sender
-        if (window.chatVozState.peerConnection) {
-          const sender = window.chatVozState.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (global.chatVozState.peerConnection) {
+          const sender = global.chatVozState.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
           if (sender) {
             sender.replaceTrack(videoTrack);
           } else {
-            window.chatVozState.peerConnection.addTrack(videoTrack, screenStream);
+            global.chatVozState.peerConnection.addTrack(videoTrack, screenStream);
           }
         }
 
@@ -1068,12 +1091,12 @@
         });
 
         const newTrack = newStream.getAudioTracks()[0];
-        if (window.chatVozState.peerConnection) {
-          const sender = window.chatVozState.peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
+        if (global.chatVozState.peerConnection) {
+          const sender = global.chatVozState.peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
           if (sender) sender.replaceTrack(newTrack);
         }
 
-        window.chatVozState.localStream = newStream;
+        global.chatVozState.localStream = newStream;
         inicializarAudioContextEVAD(newStream);
       } catch (e) {
         console.error("[ChatVoz] Erro ao trocar microfone:", e);
@@ -1098,17 +1121,17 @@
   function alternarMinimizarVoz() {
     const w = document.getElementById('chatvoz-widget');
     if (w) {
-      window.chatVozState.minimizado = !window.chatVozState.minimizado;
-      w.classList.toggle('minimized', window.chatVozState.minimizado);
+      global.chatVozState.minimizado = !global.chatVozState.minimizado;
+      w.classList.toggle('minimized', global.chatVozState.minimizado);
     }
   }
 
   // Desconexão Limpa e Fechamento Geral
   function desconectarChamadaVoz(notificarOutroPeer = true) {
-    if (notificarOutroPeer && window.chatVozState.signalingChannel) {
-      const me = typeof window.obterUsuarioLogadoChat === 'function' ? window.obterUsuarioLogadoChat() : null;
+    if (notificarOutroPeer && global.chatVozState.signalingChannel) {
+      const me = typeof global.obterUsuarioLogadoChat === 'function' ? global.obterUsuarioLogadoChat() : null;
       if (me) {
-        window.chatVozState.signalingChannel.send({
+        global.chatVozState.signalingChannel.send({
           type: 'broadcast',
           event: 'signal',
           payload: { remetente_id: me.id, callEnd: true }
@@ -1116,55 +1139,56 @@
       }
     }
 
-    if (window.chatVozState.vadAnimationId) {
-      cancelAnimationFrame(window.chatVozState.vadAnimationId);
+    if (global.chatVozState.vadAnimationId) {
+      cancelAnimationFrame(global.chatVozState.vadAnimationId);
     }
 
-    if (window.chatVozState.localStream) {
-      window.chatVozState.localStream.getTracks().forEach(t => t.stop());
+    if (global.chatVozState.localStream) {
+      global.chatVozState.localStream.getTracks().forEach(t => t.stop());
     }
 
-    if (window.chatVozState.screenStream) {
-      window.chatVozState.screenStream.getTracks().forEach(t => t.stop());
+    if (global.chatVozState.screenStream) {
+      global.chatVozState.screenStream.getTracks().forEach(t => t.stop());
     }
 
-    if (window.chatVozState.audioContext) {
-      window.chatVozState.audioContext.close().catch(() => {});
+    if (global.chatVozState.audioContext) {
+      global.chatVozState.audioContext.close().catch(() => {});
     }
 
-    if (window.chatVozState.peerConnection) {
-      window.chatVozState.peerConnection.close();
+    if (global.chatVozState.peerConnection) {
+      global.chatVozState.peerConnection.close();
     }
 
     const sb = obterSupabaseVoz();
-    if (sb && window.chatVozState.signalingChannel) {
-      sb.removeChannel(window.chatVozState.signalingChannel);
+    if (sb && global.chatVozState.signalingChannel) {
+      sb.removeChannel(global.chatVozState.signalingChannel);
     }
 
     const audioPlayer = document.getElementById('chatvoz-remote-audio-player');
     if (audioPlayer) audioPlayer.remove();
 
-    window.chatVozState.ativo = false;
-    window.chatVozState.chamando = false;
-    window.chatVozState.recebendoChamada = false;
-    window.chatVozState.localStream = null;
-    window.chatVozState.remoteStream = null;
-    window.chatVozState.screenStream = null;
-    window.chatVozState.peerConnection = null;
-    window.chatVozState.signalingChannel = null;
+    global.chatVozState.ativo = false;
+    global.chatVozState.chamando = false;
+    global.chatVozState.recebendoChamada = false;
+    global.chatVozState.localStream = null;
+    global.chatVozState.remoteStream = null;
+    global.chatVozState.screenStream = null;
+    global.chatVozState.peerConnection = null;
+    global.chatVozState.signalingChannel = null;
 
     const widget = document.getElementById('chatvoz-widget');
     if (widget) widget.remove();
   }
 
   // Exportações Globais
-  window.iniciarChamadaVoz = iniciarChamadaVoz;
-  window.desconectarChamadaVoz = desconectarChamadaVoz;
-  window.alternarMuteMic = alternarMuteMic;
-  window.alternarMuteFone = alternarMuteFone;
-  window.alternarTransmissaoTela = alternarTransmissaoTela;
-  window.expandirTelaCheiaStream = expandirTelaCheiaStream;
-  window.alternarMinimizarVoz = alternarMinimizarVoz;
-  window.alternarPainelAjustesVoz = alternarPainelAjustesVoz;
-  window.trocarDispositivoAudio = trocarDispositivoAudio;
-})();
+  global.iniciarChamadaVoz = iniciarChamadaVoz;
+  global.desconectarChamadaVoz = desconectarChamadaVoz;
+  global.alternarMuteMic = alternarMuteMic;
+  global.alternarMuteFone = alternarMuteFone;
+  global.alternarTransmissaoTela = alternarTransmissaoTela;
+  global.expandirTelaCheiaStream = expandirTelaCheiaStream;
+  global.alternarMinimizarVoz = alternarMinimizarVoz;
+  global.alternarPainelAjustesVoz = alternarPainelAjustesVoz;
+  global.trocarDispositivoAudio = trocarDispositivoAudio;
+
+})(typeof window !== 'undefined' ? window : this);

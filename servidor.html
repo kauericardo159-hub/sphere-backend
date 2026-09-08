@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel do Servidor & Infraestrutura - Sphere</title>
+    <title>Painel do Servidor & Infraestrutura - Sphere v5.2 PRO</title>
     
     <!-- Impede Cache do Navegador -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -17,6 +17,10 @@
     
     <!-- CSS Dedicado de Infraestrutura -->
     <link rel="stylesheet" href="servidor.css?v=5.2.0">
+
+    <!-- Módulos de Status e Verificados -->
+    <script src="status.js?v=5.2.0" defer></script>
+    <script src="verificados.js?v=5.2.0" defer></script>
 </head>
 <body>
 
@@ -173,7 +177,7 @@
                 </div>
             </div>
 
-            <!-- Tabela de Auditoria de Contas com Métricas de Consumo -->
+            <!-- Tabela de Auditoria de Contas com Molduras e Suporte -->
             <div class="section-header" style="margin-top: 24px;">
                 <h2 class="section-title"><i class="fa-solid fa-user-gear"></i> Inventário de Usuários e Consumo de Memória</h2>
                 <div class="header-tools">
@@ -192,12 +196,12 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Avatar</th>
+                                <th>Avatar & Moldura</th>
                                 <th>Identidade (@handle)</th>
+                                <th>Cargo & Selos</th>
                                 <th>Status</th>
                                 <th>E-mail de Recuperação</th>
                                 <th>Uso de Storage</th>
-                                <th>Criado Em</th>
                                 <th>Opções de Suporte</th>
                             </tr>
                         </thead>
@@ -232,6 +236,59 @@
 
     </div>
 
+    <!-- Modal Avançado de Suporte / Gerenciamento do Usuário -->
+    <div id="user-action-modal" class="chat-settings-modal" style="display: none;">
+        <div class="chat-modal-box" style="max-width: 480px;">
+            <div class="chat-modal-header">
+                <span><i class="fa-solid fa-user-gear" style="color:#ff2d55;"></i> Painel de Suporte ao Usuário</span>
+                <button class="btn-ajustes-close" onclick="fecharModalAcaoUsuario()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <!-- Header de Perfil do Usuário -->
+            <div style="display:flex; align-items:center; gap:14px; background:rgba(0,0,0,0.4); padding:14px; border-radius:16px; border:1px solid rgba(255,255,255,0.08);">
+                <div class="user-avatar-frame-wrap" style="position:relative; width:52px; height:52px; flex-shrink:0;">
+                    <img id="modal-user-avatar" src="" class="avatar-img" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" alt="Avatar">
+                    <img id="modal-user-moldura" src="" class="moldura-overlay-img" style="position:absolute; inset:-5px; width:calc(100% + 10px); height:calc(100% + 10px); pointer-events:none; display:none;" alt="Moldura">
+                </div>
+                <div style="overflow:hidden;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span id="modal-user-name" style="font-weight:900; font-size:1rem; color:#fff;">Nome</span>
+                        <span id="modal-user-verified-badge"></span>
+                    </div>
+                    <div id="modal-user-handle" style="font-size:0.8rem; color:var(--text-dim);">@handle</div>
+                    <div id="modal-user-role-badge" style="margin-top:4px;"></div>
+                </div>
+            </div>
+
+            <!-- Alterar Senha Direta -->
+            <div class="chat-setting-group">
+                <label><i class="fa-solid fa-key" style="color:#f1c40f;"></i> Redefinir Senha de Acesso</label>
+                <div style="display:flex; gap:8px;">
+                    <input type="password" id="modal-input-pwd" placeholder="Digite a nova senha..." style="flex:1; height:36px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:0 12px; color:#fff; font-size:0.85rem; outline:none; box-sizing:border-box;">
+                    <button class="chat-btn-action-main" style="height:36px !important; white-space:nowrap;" onclick="executarRedefinicaoSenhaModal()"><i class="fa-solid fa-check"></i> Salvar</button>
+                </div>
+            </div>
+
+            <!-- Alternar Verificado / Selo Oficial -->
+            <div class="chat-setting-group">
+                <label><i class="fa-solid fa-certificate" style="color:#00d2ff;"></i> Selo de Verificado</label>
+                <button id="btn-toggle-verified-modal" class="chat-btn-action-sec" style="width:100%; justify-content:center;" onclick="alternarSeloVerificadoModal()">
+                    <i class="fa-solid fa-circle-check"></i> Alternar Verificado
+                </button>
+            </div>
+
+            <hr style="border:none; border-top:1px solid rgba(255,255,255,0.08); margin:4px 0;">
+
+            <!-- Risco / Exclusão de Conta -->
+            <div class="chat-setting-group">
+                <label><i class="fa-solid fa-triangle-exclamation" style="color:#ff4757;"></i> Operação Destrutiva</label>
+                <button class="chat-btn-action-sec" style="width:100%; background:rgba(255,71,87,0.15); color:#ff4757; border-color:rgba(255,71,87,0.3); justify-content:center;" onclick="executarExclusaoUsuarioModal()">
+                    <i class="fa-solid fa-trash"></i> Expurgar Conta do Banco
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="server-toast">
         <i class="fa-solid fa-circle-check"></i>
@@ -250,6 +307,7 @@
         let keepAliveTimer = null;
         let isKeepAliveActive = false;
         let criadorLogado = null;
+        let usuarioSelecionadoModal = null;
 
         // 1. AUDITORIA E LOGS DO SISTEMA
         async function adicionarLog(mensagem, tipo = 'info') {
@@ -363,7 +421,7 @@
             }
         }
 
-        // 3. TELEMETRIA E MÉTRICAS DE BANCO & USUÁRIOS ONLINE/OFFLINE
+        // 3. TELEMETRIA E MÉTRICAS DE BANCO
         async function carregarMetricasTabelasBanco() {
             if (!supabaseClient) return;
 
@@ -478,7 +536,7 @@
             }
         }
 
-        // 5. BOT KEEP-ALIVE 24/7 & MONITOR DE SAÚDE
+        // 5. BOT KEEP-ALIVE 24/7
         async function sincronizarEstadoBotKeepAliveBD() {
             try {
                 const { data } = await supabaseClient
@@ -594,7 +652,6 @@
                 document.getElementById('server-uptime').innerText = formatUptime(data.uptime);
                 document.getElementById('server-ping').innerText = `${ping} ms`;
 
-                // Renderiza consumo de RAM se retornado pela API Node.js ou estimativa
                 if (data.memory && data.memory.rss) {
                     const ramMB = (data.memory.rss / (1024 * 1024)).toFixed(1);
                     document.getElementById('server-ram-usage').innerText = `${ramMB} MB / 512 MB`;
@@ -627,20 +684,21 @@
             }
         }
 
-        // 7. INVENTÁRIO DE USUÁRIOS, CÁLCULO DE STORAGE & CENSO DE PRESENÇA
+        // 7. INVENTÁRIO COMPLETO DE USUÁRIOS (Consulta com colunas 100% reais do banco)
         async function fetchUsers() {
             const refreshIcon = document.getElementById('refresh-icon');
             if (refreshIcon) refreshIcon.classList.add('fa-spin');
 
             let { data: usuarios, error } = await supabaseClient
                 .from('usuarios')
-                .select('id, username, display_name, email, status, avatar_url, created_at, is_creator, is_criador')
+                .select('id, username, display_name, email, status, avatar_url, moldura_url, is_verified, role, is_creator, is_criador, is_admin, is_mod, is_vip, created_at')
                 .order('id', { ascending: true });
 
             if (refreshIcon) refreshIcon.classList.remove('fa-spin');
 
             if (error || !usuarios) {
-                document.getElementById('users-table-body').innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--offline-red); padding: 30px;">Falha ao consultar banco de dados.</td></tr>`;
+                console.error("[Supabase Error]:", error);
+                document.getElementById('users-table-body').innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--offline-red); padding: 30px;">Falha ao consultar banco de dados: ${error ? error.message : 'Erro desconhecido'}</td></tr>`;
                 mostrarToast("Erro ao ler tabela de usuários", true);
                 return;
             }
@@ -648,18 +706,15 @@
             globalUsersCache = usuarios;
             document.getElementById('total-users').innerText = usuarios.length;
             
-            // Atualiza contadores Online/Offline
             const onlineCount = usuarios.filter(u => u.status === 'online').length;
             const offlineCount = usuarios.length - onlineCount;
 
             document.getElementById('users-online-count').innerText = onlineCount;
             document.getElementById('users-offline-count').innerText = offlineCount;
 
-            // Calcula o tamanho estimado em KB do banco de dados (Linhas de Usuário + Avatares)
             let totalBytesEstimados = 0;
             usuarios.forEach(u => {
-                const stringified = JSON.stringify(u);
-                totalBytesEstimados += new Blob([stringified]).size;
+                totalBytesEstimados += new Blob([JSON.stringify(u)]).size;
             });
 
             const totalKBEstimado = (totalBytesEstimados / 1024).toFixed(2);
@@ -684,44 +739,44 @@
                 const emailDisplay = user.email || 'Não informado';
                 const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(usernameDisplay)}`;
                 const avatarSrc = (user.avatar_url && user.avatar_url.trim() !== '') ? user.avatar_url : defaultAvatar;
-                const eCriador = Boolean(user.is_creator || user.is_criador);
-                const dataCriacao = user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : 'N/A';
-                const isOnline = user.status === 'online';
+                const molduraSrc = user.moldura_url || '';
+                const isVerificado = Boolean(user.is_verified);
 
-                // Calcula consumo individual do registro do usuário
                 const userBytes = new Blob([JSON.stringify(user)]).size;
                 const userKB = (userBytes / 1024).toFixed(1);
+
+                const tagHtml = typeof window.obterHtmlTag === 'function' ? window.obterHtmlTag(user) : '<span class="user-tag member">Membro</span>';
+                const statusDotHtml = typeof window.obterHtmlStatusDot === 'function' ? window.obterHtmlStatusDot(user.status, user.id) : '';
+                const verificadoSelo = isVerificado ? '<i class="fa-solid fa-circle-check" style="color:#00d2ff; margin-left:4px;" title="Verificado"></i>' : '';
 
                 tbody.innerHTML += `
                     <tr>
                         <td>
-                            <img src="${avatarSrc}" class="avatar-img" onerror="this.onerror=null; this.src='${defaultAvatar}';">
+                            <div class="user-avatar-frame-wrap" style="position:relative; display:inline-block; width:42px; height:42px;">
+                                <img src="${avatarSrc}" class="avatar-img" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" onerror="this.onerror=null; this.src='${defaultAvatar}';">
+                                ${molduraSrc ? `<img src="${molduraSrc}" class="moldura-overlay-img" style="position:absolute; inset:-4px; width:calc(100% + 8px); height:calc(100% + 8px); pointer-events:none; z-index:2;">` : ''}
+                            </div>
                         </td>
                         <td>
-                            <div class="user-cell">
-                                <span>${nameDisplay}</span>
-                                ${eCriador ? '<i class="fa-solid fa-crown" style="color:var(--gold-creator);" title="Criador/Admin"></i>' : ''}
+                            <div class="user-cell" style="display:flex; align-items:center; gap:4px;">
+                                <strong>${nameDisplay}</strong>
+                                ${verificadoSelo}
                             </div>
                             <div style="font-size:0.75rem; color:var(--text-dim)">@${usernameDisplay}</div>
                         </td>
+                        <td>${tagHtml}</td>
                         <td>
-                            <span class="status-badge-pill ${isOnline ? 'active' : 'disabled'}" style="font-size: 0.7rem; padding: 4px 10px;">
-                                <i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i>
-                                ${isOnline ? 'Online' : 'Offline'}
-                            </span>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                ${statusDotHtml}
+                                <span style="font-size:0.78rem; color:#fff; text-transform:capitalize;">${user.status || 'offline'}</span>
+                            </div>
                         </td>
                         <td><span style="font-size:0.82rem; color:var(--text-muted);">${emailDisplay}</span></td>
                         <td><span style="font-family: var(--font-mono); font-size:0.78rem; color: var(--blue-info);">${userKB} KB</span></td>
-                        <td><span style="font-size:0.82rem; color:var(--text-muted);">${dataCriacao}</span></td>
                         <td>
-                            <div class="btn-action-group">
-                                <button class="btn-pwd-reset" onclick="redefinirSenhaDireta(${user.id}, '${usernameDisplay}')" title="Redefinir Senha Administrador">
-                                    <i class="fa-solid fa-key"></i> Redefinir Senha
-                                </button>
-                                <button class="btn-delete" ${eCriador ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onclick="deleteUser(${user.id}, '${usernameDisplay}')" title="Excluir Conta do Banco">
-                                    <i class="fa-solid fa-trash"></i> Excluir
-                                </button>
-                            </div>
+                            <button class="chat-btn-action-main" style="height:32px !important; font-size:0.72rem;" onclick="abrirModalAcaoUsuario(${user.id})">
+                                <i class="fa-solid fa-gears"></i> Gerenciar
+                            </button>
                         </td>
                     </tr>
                 `;
@@ -739,33 +794,106 @@
             renderUsers(filtered);
         }
 
-        async function redefinirSenhaDireta(id, username) {
-            const novaSenha = prompt(`Informe a nova senha administrativa para a conta @${username}:`);
-            if (!novaSenha || novaSenha.trim() === '') return;
+        // 8. MODAL DE GERENCIAMENTO AVANÇADO DO USUÁRIO
+        function abrirModalAcaoUsuario(id) {
+            const user = globalUsersCache.find(u => u.id === id);
+            if (!user) return;
+
+            usuarioSelecionadoModal = user;
+            const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(user.username || 'User')}`;
+
+            document.getElementById('modal-user-avatar').src = user.avatar_url || defaultAvatar;
+            const molduraEl = document.getElementById('modal-user-moldura');
+            if (user.moldura_url) {
+                molduraEl.src = user.moldura_url;
+                molduraEl.style.display = 'block';
+            } else {
+                molduraEl.style.display = 'none';
+            }
+
+            document.getElementById('modal-user-name').innerText = user.display_name || user.username;
+            document.getElementById('modal-user-handle').innerText = `@${user.username}`;
+            
+            const isVerificado = Boolean(user.is_verified);
+            document.getElementById('modal-user-verified-badge').innerHTML = isVerificado 
+                ? '<i class="fa-solid fa-circle-check" style="color:#00d2ff;" title="Verificado"></i>' 
+                : '';
+
+            document.getElementById('modal-user-role-badge').innerHTML = typeof window.obterHtmlTag === 'function' 
+                ? window.obterHtmlTag(user) 
+                : '<span class="user-tag member">Membro</span>';
+
+            document.getElementById('modal-input-pwd').value = '';
+
+            document.getElementById('user-action-modal').style.display = 'flex';
+        }
+
+        function fecharModalAcaoUsuario() {
+            usuarioSelecionadoModal = null;
+            document.getElementById('user-action-modal').style.display = 'none';
+        }
+
+        async function executarRedefinicaoSenhaModal() {
+            if (!usuarioSelecionadoModal) return;
+            const novaSenha = document.getElementById('modal-input-pwd').value.trim();
+            if (!novaSenha) {
+                mostrarToast('Digite a nova senha para continuar', true);
+                return;
+            }
 
             const { error } = await supabaseClient
                 .from('usuarios')
-                .update({ senha: novaSenha.trim() })
-                .eq('id', id);
+                .update({ senha: novaSenha })
+                .eq('id', usuarioSelecionadoModal.id);
 
             if (error) {
                 mostrarToast('Erro ao redefinir senha: ' + error.message, true);
             } else {
-                mostrarToast(`Senha de @${username} alterada com sucesso!`);
-                adicionarLog(`🔑 Senha da conta @${username} alterada pelo Administrador.`, "success");
+                mostrarToast(`Senha de @${usuarioSelecionadoModal.username} alterada!`);
+                adicionarLog(`🔑 Senha da conta @${usuarioSelecionadoModal.username} alterada pelo Administrador.`, "success");
+                fecharModalAcaoUsuario();
             }
         }
 
-        async function deleteUser(id, username) {
-            if (!confirm(`Remover permanentemente do banco de dados a conta @${username}?`)) return;
+        async function alternarSeloVerificadoModal() {
+            if (!usuarioSelecionadoModal) return;
 
-            const { error } = await supabaseClient.from('usuarios').delete().eq('id', id);
-            
+            const estadoAtual = Boolean(usuarioSelecionadoModal.is_verified);
+            const novoEstado = !estadoAtual;
+
+            const { error } = await supabaseClient
+                .from('usuarios')
+                .update({ is_verified: novoEstado })
+                .eq('id', usuarioSelecionadoModal.id);
+
+            if (error) {
+                mostrarToast('Erro ao atualizar verificação: ' + error.message, true);
+            } else {
+                mostrarToast(`Selo de verificado ${novoEstado ? 'concedido a' : 'removido de'} @${usuarioSelecionadoModal.username}!`);
+                adicionarLog(`🛡️ Status de Verificado de @${usuarioSelecionadoModal.username} alterado para ${novoEstado}.`, "info");
+                fecharModalAcaoUsuario();
+                fetchUsers();
+            }
+        }
+
+        async function executarExclusaoUsuarioModal() {
+            if (!usuarioSelecionadoModal) return;
+            if (usuarioSelecionadoModal.is_creator || usuarioSelecionadoModal.is_criador) {
+                mostrarToast('Não é possível excluir o Criador do sistema!', true);
+                return;
+            }
+
+            if (!confirm(`Remover permanentemente do banco a conta @${usuarioSelecionadoModal.username}?`)) return;
+
+            const { error } = await supabaseClient.from('usuarios').delete().eq('id', usuarioSelecionadoModal.id);
+
             if (error) {
                 mostrarToast('Erro ao excluir conta: ' + error.message, true);
             } else {
-                mostrarToast(`Conta @${username} excluída com sucesso!`);
-                adicionarLog(`🗑️ Conta @${username} removida da infraestrutura pelo Administrador.`, "error");
+                mostrarToast(`Conta @${usuarioSelecionadoModal.username} removida!`);
+                adicionarLog(`🗑️ Conta @${usuarioSelecionadoModal.username} removida da infraestrutura pelo Administrador.`, "error");
+                fecharModalAcaoUsuario();
+                fetchUsers();
             }
         }
 

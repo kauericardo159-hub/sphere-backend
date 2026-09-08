@@ -1,16 +1,15 @@
 // ==========================================================================
 // MÓDULO DE PERFIL DE USUÁRIO (perfil.js) - SPHERE v5.2 PRO
-// Integrado com status.js, verificados.js, Realtime, Social & Modal System
+// Sincronizado com status.js, verificados.js, editarperfil.js & Realtime CDC
+// Suporte a Bloqueio de Perfil por Conta Banida / Desativada
 // ==========================================================================
 
-(function () {
+(function (global) {
   'use strict';
 
-  // --- Sistema de Pilha de Navegação (Histórico) e Realtime ---
   let historicoPerfis = [];
   let canalRealtimePerfil = null;
 
-  // Sanitização de HTML contra vulnerabilidades XSS
   function sanitizarHtmlPerfil(str) {
     if (!str) return '';
     return String(str)
@@ -21,7 +20,6 @@
       .replace(/'/g, '&#039;');
   }
 
-  // Toast de Notificação do Perfil
   function mostrarToastPerfil(mensagem, tipo = 'info', tempo = 2500) {
     const antigo = document.getElementById('perfil-toast-msg');
     if (antigo) antigo.remove();
@@ -82,6 +80,18 @@
     }
   }
 
+  function calcularIdadeFormatada(dataNascimento) {
+    if (!dataNascimento) return 'Não informada';
+    const nascimento = new Date(dataNascimento);
+    const hoje = new Date();
+    let idade = hoje.getFullYear() - nascimento.getFullYear();
+    const m = hoje.getMonth() - nascimento.getMonth();
+    if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) {
+      idade--;
+    }
+    return isNaN(idade) || idade < 0 ? 'Não informada' : `${idade} anos`;
+  }
+
   function calcularTempoDeConta(usuario) {
     const dataObj = extrairDataCriacaoReal(usuario);
     if (!dataObj) return '';
@@ -115,38 +125,40 @@
     }
   }
 
-  // Integrado exclusivamente ao módulo verificados.js (v5.2)
   function renderizarBadgesVerificados(usuario) {
     if (!usuario) return '';
 
-    let listaBadges = [];
+    if (typeof global.obterHtmlBadgesUsuario === 'function') {
+      return global.obterHtmlBadgesUsuario(usuario);
+    }
+
+    let listaBadgesGerais = [];
+
     if (usuario.verificados) {
       if (Array.isArray(usuario.verificados)) {
-        listaBadges = [...usuario.verificados];
+        listaBadgesGerais = [...usuario.verificados];
       } else if (typeof usuario.verificados === 'string') {
-        listaBadges = usuario.verificados.split(/[,|]/).map(s => s.trim().toLowerCase());
+        listaBadgesGerais = usuario.verificados.split(/[,|]/).map(s => s.trim().toLowerCase());
       }
     }
 
-    if ((usuario.is_creator || usuario.is_criador) && !listaBadges.includes('creator')) {
-      listaBadges.unshift('creator');
+    if ((usuario.is_creator || usuario.is_criador) && !listaBadgesGerais.includes('creator')) {
+      listaBadgesGerais.unshift('creator');
     }
 
-    if (usuario.is_verified && !listaBadges.includes('verified')) {
-      listaBadges.push('verified');
+    if (usuario.is_verified && !listaBadgesGerais.includes('verified')) {
+      listaBadgesGerais.push('verified');
     }
 
-    if (listaBadges.length === 0) return '';
+    if (listaBadgesGerais.length === 0) return '';
 
-    if (typeof window.obterHtmlBadgesUsuario === 'function') {
-      return window.obterHtmlBadgesUsuario(listaBadges);
-    }
+    const corIcone = usuario.cor_verificados || usuario.cor_tema || '#ff2d55';
 
     return `
-      <div class="chat-badge-container">
-        ${listaBadges.map(item => `
-          <span class="chat-badge-icon badge-verified" title="${sanitizarHtmlPerfil(item)}">
-            <i class="fa-solid fa-circle-check"></i>
+      <div class="chat-badge-container" style="display: inline-flex; align-items: center; gap: 4px;">
+        ${listaBadgesGerais.map(item => `
+          <span class="chat-badge-icon badge-${sanitizarHtmlPerfil(item)}" title="Selo: ${sanitizarHtmlPerfil(item)}">
+            <i class="fa-solid fa-certificate" style="color: ${corIcone};"></i>
           </span>
         `).join('')}
       </div>
@@ -159,20 +171,13 @@
     if (tags.length === 0) return '';
 
     return `
-      <div class="perfil-tags-container">
-        ${tags.map(tag => `<span class="perfil-tag-chip">#${sanitizarHtmlPerfil(tag)}</span>`).join('')}
+      <div class="preview-tags-container perfil-tags-container">
+        ${tags.map(tag => {
+          const tClean = tag.startsWith('#') ? tag : `#${tag}`;
+          return `<span class="profile-tag-pill perfil-tag-chip">${sanitizarHtmlPerfil(tClean)}</span>`;
+        }).join('')}
       </div>
     `;
-  }
-
-  function obterLabelStatus(status) {
-    const mapa = {
-      online: { texto: 'Disponível', cor: '#23a55a', icone: 'fa-circle' },
-      ausente: { texto: 'Ausente', cor: '#f0b232', icone: 'fa-moon' },
-      dnd: { texto: 'Não Perturbe', cor: '#f23f43', icone: 'fa-minus-circle' },
-      offline: { texto: 'Invisível', cor: '#80848e', icone: 'fa-eye-slash' }
-    };
-    return mapa[(status || '').toLowerCase()] || mapa.offline;
   }
 
   function copiarParaAreaTransferencia(texto, rotulo) {
@@ -187,7 +192,6 @@
     });
   }
 
-  // Modal para exibir o recado completo do usuário ao clicar
   function abrirModalRecadoCompleto(emoji, textoRecado) {
     const antigo = document.getElementById('perfil-recado-modal');
     if (antigo) antigo.remove();
@@ -244,33 +248,98 @@
   }
 
   function enviarMensagemParaUsuario(userTarget) {
+    if (!userTarget) return;
+    const targetId = typeof userTarget === 'object' ? Number(userTarget.id) : Number(userTarget);
+
     fecharPerfilResetandoHistorico();
 
-    if (typeof window.alternarAbaNav === 'function') {
-      window.alternarAbaNav('chat');
-    } else if (typeof window.abrirInterfaceChat === 'function') {
-      window.abrirInterfaceChat();
+    if (typeof global.restaurarChatOcultoSeNecessario === 'function') {
+      global.restaurarChatOcultoSeNecessario(targetId);
+    }
+
+    if (!document.getElementById('chat-main-container') && typeof global.abrirInterfaceChat === 'function') {
+      global.abrirInterfaceChat();
+    }
+
+    if (typeof global.alternarAbaNav === 'function') {
+      global.alternarAbaNav('chat');
+    } else if (typeof global.mudarAba === 'function') {
+      global.mudarAba('chat');
     }
 
     setTimeout(() => {
-      if (typeof window.seleccionarConversaDirect === 'function') {
-        window.seleccionarConversaDirect(userTarget);
-      } else if (typeof window.abrirChatComUsuario === 'function') {
-        window.abrirChatComUsuario(userTarget);
+      if (typeof global.seleccionarConversaDirect === 'function') {
+        global.seleccionarConversaDirect(userTarget);
+      } else if (typeof global.enviarMensagemParaUsuario === 'function') {
+        global.enviarMensagemParaUsuario(userTarget);
+      } else if (typeof global.abrirChatComUsuario === 'function') {
+        global.abrirChatComUsuario(userTarget);
+      } else if (typeof global.cliqueItemContato === 'function') {
+        global.cliqueItemContato(targetId);
       }
-    }, 150);
+    }, 100);
   }
 
   function cancelarInscricaoRealtimePerfil() {
-    const sb = window.supabaseClient || window.supabase || window.sb;
+    const sb = global.supabaseClient || global.supabase || global.sb;
     if (canalRealtimePerfil && sb) {
-      sb.removeChannel(canalRealtimePerfil);
+      try {
+        sb.removeChannel(canalRealtimePerfil);
+      } catch (e) {
+        console.warn("[Perfil] Erro ao desligar realtime perfil:", e);
+      }
       canalRealtimePerfil = null;
     }
   }
 
   // ========================================================================
-  // LÓGICA DE ABERTURA E RENDERIZAÇÃO DO PERFIL
+  // RENDERIZAÇÃO DE TELA DE PERFIL RESTREITO (BANIDO / DESATIVADO)
+  // ========================================================================
+  function renderizarPerfilRestrito(user, tipoRestricao, botaoVoltarOuFechar) {
+    const usernameClean = sanitizarHtmlPerfil(user.username || 'usuario');
+    const container = document.createElement('div');
+    container.id = 'perfil-full-container';
+    container.className = 'perfil-full-container perfil-restricted-mode';
+
+    let iconeBanner = 'fa-user-slash';
+    let tituloBanner = 'Conta Indisponível';
+    let mensagemDesc = 'Este perfil não está acessível no momento.';
+
+    if (tipoRestricao === 'desativada') {
+      iconeBanner = 'fa-user-clock';
+      tituloBanner = 'Conta Desativada';
+      mensagemDesc = `@${usernameClean} desativou sua conta temporariamente.`;
+    } else if (tipoRestricao === 'banida' || tipoRestricao === 'suspensa') {
+      iconeBanner = 'fa-user-xmark';
+      tituloBanner = 'Conta Banida / Suspensa';
+      mensagemDesc = `@${usernameClean} foi banido por violar as diretrizes da comunidade.`;
+    }
+
+    container.innerHTML = `
+      <div class="perfil-content-wrapper profile-card-preview-wrapper restricted-card" onclick="event.stopPropagation();">
+        ${botaoVoltarOuFechar}
+
+        <div class="perfil-banner profile-preview-banner restricted-banner">
+          <div class="perfil-banner-overlay"></div>
+        </div>
+
+        <div class="perfil-restricted-body">
+          <div class="restricted-icon-box">
+            <i class="fa-solid ${iconeBanner}"></i>
+          </div>
+          <h3>${tituloBanner}</h3>
+          <p>${mensagemDesc}</p>
+          <div class="restricted-handle">@${usernameClean}</div>
+        </div>
+      </div>
+    `;
+
+    container.addEventListener('click', voltarOuFecharPerfil);
+    return container;
+  }
+
+  // ========================================================================
+  // ABERTURA E RENDERIZAÇÃO COMPLETA DO PERFIL
   // ========================================================================
   
   async function abrirPerfil(usuarioInput, ehVoltar = false) {
@@ -284,14 +353,13 @@
     const idAlvoNum = Number(user.id);
     const ehMeuPerfil = meuId !== null && meuId === idAlvoNum;
 
-    // Gerenciamento da Pilha de Histórico
-    if (!ehVoltar && window._perfilUsuarioCache) {
-      const idAtualCache = Number(window._perfilUsuarioCache.id);
+    if (!ehVoltar && global._perfilUsuarioCache) {
+      const idAtualCache = Number(global._perfilUsuarioCache.id);
       
       if (idAtualCache !== idAlvoNum) {
         const ultimoNoHistorico = historicoPerfis[historicoPerfis.length - 1];
         if (!ultimoNoHistorico || Number(ultimoNoHistorico.id) !== idAtualCache) {
-          historicoPerfis.push(window._perfilUsuarioCache);
+          historicoPerfis.push(global._perfilUsuarioCache);
         }
       }
     }
@@ -301,20 +369,20 @@
     const containerExistente = document.getElementById('perfil-full-container');
     if (containerExistente) containerExistente.remove();
 
-    if (typeof window.ocultarHomeCard === 'function') {
-      window.ocultarHomeCard();
+    if (typeof global.ocultarHomeCard === 'function') {
+      global.ocultarHomeCard();
     }
 
-    window._perfilUsuarioCache = user;
+    global._perfilUsuarioCache = user;
 
-    // Sincronização em tempo real via Supabase
-    const sb = window.supabaseClient || window.supabase || window.sb;
+    // Sincronização em tempo real via Supabase CDC
+    const sb = global.supabaseClient || global.supabase || global.sb;
     if (sb && idAlvoNum) {
       try {
         const { data } = await sb.from('usuarios').select('*').eq('id', idAlvoNum).single();
         if (data) {
           user = { ...user, ...data };
-          window._perfilUsuarioCache = user;
+          global._perfilUsuarioCache = user;
           if (ehMeuPerfil) {
             localStorage.setItem('usuario_logado', JSON.stringify(user));
           }
@@ -329,11 +397,11 @@
             filter: `id=eq.${idAlvoNum}` 
           }, (payload) => {
             if (payload.new) {
-              window._perfilUsuarioCache = { ...window._perfilUsuarioCache, ...payload.new };
+              global._perfilUsuarioCache = { ...global._perfilUsuarioCache, ...payload.new };
               if (ehMeuPerfil) {
-                localStorage.setItem('usuario_logado', JSON.stringify(window._perfilUsuarioCache));
+                localStorage.setItem('usuario_logado', JSON.stringify(global._perfilUsuarioCache));
               }
-              abrirPerfil(window._perfilUsuarioCache, true);
+              abrirPerfil(global._perfilUsuarioCache, true);
             }
           })
           .subscribe();
@@ -343,80 +411,6 @@
       }
     }
 
-    const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(user.username || 'user')}`;
-    const avatarSrc = (user.avatar_url && user.avatar_url.trim() !== '') ? user.avatar_url : defaultAvatar;
-    const molduraSrc = (user.moldura_url && user.moldura_url.trim() !== '') ? user.moldura_url : null;
-
-    const defaultBanner = 'linear-gradient(135deg, #ff2d55, #6c5ce7)';
-    const bannerStyle = (user.banner_url && user.banner_url.trim() !== '')
-      ? `background-image: url('${user.banner_url}');`
-      : `background: ${defaultBanner};`;
-
-    const eCriador = Boolean(user.is_creator || user.is_criador);
-    const nomeExibicao = user.display_name || user.nome || user.username || 'Usuário';
-    const dataMembroTexto = formatarDataMembroDesde(user);
-    const tempoDeContaTexto = calcularTempoDeConta(user);
-    const statusObj = obterLabelStatus(user.status || 'offline');
-
-    // Indicador de presença
-    let htmlStatusDot = '';
-    if (typeof window.obterHtmlStatusDot === 'function') {
-      const dotInner = window.obterHtmlStatusDot(user.status || 'offline', user.id);
-      htmlStatusDot = `<div class="avatar-status-badge">${dotInner}</div>`;
-    } else {
-      htmlStatusDot = `<div class="avatar-status-badge"><span class="status-dot offline" data-user-status-id="${user.id}"></span></div>`;
-    }
-
-    // Tratamento Inteligente do Recado (Emoji apenas, Texto apenas, Ambos ou Nada)
-    const emojiStatus = user.status_emoji ? user.status_emoji.trim() : '';
-    const textoRecado = user.custom_status ? user.custom_status.trim() : '';
-
-    let customStatusHtml = '';
-    if (emojiStatus || textoRecado) {
-      const emojiSpan = emojiStatus ? `<span class="custom-status-emoji">${emojiStatus}</span>` : '';
-      const textoSpan = textoRecado ? `<span class="custom-status-text">${sanitizarHtmlPerfil(textoRecado)}</span>` : '';
-
-      customStatusHtml = `
-        <div class="perfil-custom-status-banner" title="Clique para ver o recado completo" onclick="window.abrirModalRecadoCompleto('${emojiStatus}', '${sanitizarHtmlPerfil(textoRecado)}')">
-          ${emojiSpan}
-          ${textoSpan}
-        </div>`;
-    }
-
-    const htmlVerificados = renderizarBadgesVerificados(user);
-    const htmlTags = renderizarTagsPerfil(user.tags);
-
-    const sobreMimTexto = (user.sobre && user.sobre.trim() !== '')
-      ? sanitizarHtmlPerfil(user.sobre)
-      : '<span class="perfil-bio-empty">Nenhuma biografia adicionada ainda.</span>';
-
-    // Botão de Editar Perfil (Apenas no Banner para o próprio usuário) - 32px
-    let botaoBannerAcao = '';
-    if (ehMeuPerfil) {
-      botaoBannerAcao = `
-        <button class="btn-editar-banner" onclick="if(typeof window.abrirModalEditarPerfil === 'function') window.abrirModalEditarPerfil();">
-          <i class="fa-solid fa-pen-to-square"></i> Editar Perfil
-        </button>`;
-    }
-
-    // Botões de Ações Sociais (Posicionados ABAIXO do Perfil) - 32px
-    let htmlAcoesSociaisAbaixo = '';
-    if (!ehMeuPerfil) {
-      htmlAcoesSociaisAbaixo = `
-        <div class="perfil-social-actions-group">
-          <button id="btn-perfil-mensagem" class="btn-perfil-action highlight" onclick="window.enviarMensagemParaUsuario(window._perfilUsuarioCache)">
-            <i class="fa-solid fa-paper-plane"></i> Mensagem
-          </button>
-          <button id="btn-perfil-seguir" class="btn-perfil-action" onclick="window.executarAcaoSeguir(${idAlvoNum})">
-            <i class="fa-solid fa-user-plus"></i> Seguir
-          </button>
-          <button id="btn-perfil-amizade" class="btn-perfil-action" onclick="window.executarAcaoAmizade(${idAlvoNum})">
-            <i class="fa-solid fa-handshake"></i> Adicionar
-          </button>
-        </div>`;
-    }
-
-    // Botão de Voltar / Fechar - 32px
     const temHistorico = historicoPerfis.length > 0;
     let botaoVoltarOuFechar = '';
 
@@ -436,94 +430,184 @@
         </button>`;
     }
 
+    // VERIFICAÇÃO DE PERFIL BLOQUEADO / DESATIVADO / BANIDO
+    const estaBanido = Boolean(user.is_banned) || user.status_conta === 'banida' || user.status_conta === 'suspensa';
+    const estaDesativado = user.status_conta === 'desativada';
+
+    if (!ehMeuPerfil && (estaBanido || estaDesativado)) {
+      const tipoRestricao = estaBanido ? 'banida' : 'desativada';
+      const containerBloqueado = renderizarPerfilRestrito(user, tipoRestricao, botaoVoltarOuFechar);
+      document.body.appendChild(containerBloqueado);
+
+      document.removeEventListener('keydown', tratarEscPerfil);
+      document.addEventListener('keydown', tratarEscPerfil);
+      return;
+    }
+
+    const defaultAvatar = `https://ui-avatars.com/api/?background=ff2d55&color=fff&name=${encodeURIComponent(user.username || 'user')}`;
+    const avatarSrc = (user.avatar_url && user.avatar_url.trim() !== '') ? user.avatar_url : defaultAvatar;
+    const molduraSrc = (user.moldura_url && user.moldura_url.trim() !== '') ? user.moldura_url : null;
+
+    const defaultBanner = 'linear-gradient(135deg, #ff2d55, #6c5ce7)';
+    const bannerStyle = (user.banner_url && user.banner_url.trim() !== '')
+      ? `background-image: url('${user.banner_url}');`
+      : `background: ${defaultBanner};`;
+
+    const wallpaperStyle = (user.wallpaper_url && user.wallpaper_url.trim() !== '')
+      ? `background-image: url('${user.wallpaper_url}');`
+      : '';
+
+    // Cores de Tema Dinâmicas do Usuário (cor_bg1, cor_bg2, cor_tema)
+    const corBg1 = user.cor_bg1 || user.cor_tema || '#ff2d55';
+    const corBg2 = user.cor_bg2 || user.cor_tema || '#ff7675';
+    const corGradient = corBg1 !== corBg2 ? `linear-gradient(135deg, ${corBg1}, ${corBg2})` : corBg1;
+
+    const eCriador = Boolean(user.is_creator || user.is_criador);
+    const nomeExibicao = user.display_name || user.nome || user.username || 'Usuário';
+    const dataMembroTexto = formatarDataMembroDesde(user);
+    const tempoDeContaTexto = calcularTempoDeConta(user);
+    
+    // Obtém label do status via status.js ou fallback
+    const infoStatus = (typeof global.obterInfoStatus === 'function') 
+      ? global.obterInfoStatus(user.status) 
+      : { label: user.status || 'Offline', classe: user.status || 'offline' };
+
+    // Ponto de status sincronizado
+    let statusDotHtml = '';
+    if (typeof global.obterHtmlStatusDot === 'function') {
+      statusDotHtml = global.obterHtmlStatusDot(user.status || 'offline', user.id);
+    } else {
+      statusDotHtml = `<span class="status-dot ${infoStatus.classe}" data-user-status-id="${user.id}"></span>`;
+    }
+
+    // Recado / Status Customizado
+    const emojiStatus = user.status_emoji ? user.status_emoji.trim() : '';
+    const textoRecado = user.custom_status ? user.custom_status.trim() : '';
+
+    let customStatusHtml = '';
+    if (emojiStatus || textoRecado) {
+      const emojiSpan = emojiStatus ? `<span class="emoji">${emojiStatus}</span>` : '';
+      const textoSpan = textoRecado ? `<span class="text">${sanitizarHtmlPerfil(textoRecado)}</span>` : '';
+
+      customStatusHtml = `
+        <div class="preview-status-bubble" title="Clique para ver o recado completo" onclick="window.abrirModalRecadoCompleto('${emojiStatus}', '${sanitizarHtmlPerfil(textoRecado)}')">
+          ${emojiSpan}
+          ${textoSpan}
+        </div>`;
+    }
+
+    const htmlVerificados = renderizarBadgesVerificados(user);
+    const htmlTags = renderizarTagsPerfil(user.tags);
+
+    const sobreMimTexto = (user.sobre && user.sobre.trim() !== '')
+      ? sanitizarHtmlPerfil(user.sobre)
+      : 'Sua biografia aparecerá aqui...';
+
+    // Grupo de Ações Sociais
+    let htmlAcoesSociaisAbaixo = '';
+    if (ehMeuPerfil) {
+      htmlAcoesSociaisAbaixo = `
+        <div class="perfil-social-actions-group">
+          <button class="btn-perfil-action btn-editar-perfil-main" onclick="if(typeof window.abrirModalEditarPerfil === 'function') window.abrirModalEditarPerfil();">
+            <i class="fa-solid fa-pen-to-square"></i> Editar Perfil
+          </button>
+        </div>`;
+    } else {
+      htmlAcoesSociaisAbaixo = `
+        <div class="perfil-social-actions-group">
+          <button id="btn-perfil-mensagem" class="btn-perfil-action btn-mensagem" onclick="window.enviarMensagemParaUsuario(window._perfilUsuarioCache)">
+            <i class="fa-solid fa-paper-plane"></i> Mensagem
+          </button>
+          <button id="btn-perfil-seguir" class="btn-perfil-action btn-seguir" onclick="window.executarAcaoSeguir(${idAlvoNum})">
+            <i class="fa-solid fa-user-plus"></i> Seguir
+          </button>
+          <button id="btn-perfil-amizade" class="btn-perfil-action btn-amigo" onclick="window.executarAcaoAmizade(${idAlvoNum})">
+            <i class="fa-solid fa-handshake"></i> Adicionar
+          </button>
+        </div>`;
+    }
+
     const container = document.createElement('div');
     container.id = 'perfil-full-container';
     container.className = `perfil-full-container ${eCriador ? 'is-creator' : ''}`;
 
     container.innerHTML = `
-      <div class="perfil-content-wrapper" onclick="event.stopPropagation();">
+      <div class="perfil-content-wrapper profile-card-preview-wrapper" style="${wallpaperStyle} --user-theme-color: ${corBg1}; --user-theme-gradient: ${corGradient}; --user-theme-glow: ${corBg1}40; --user-theme-border: ${corBg1}35;" onclick="event.stopPropagation();">
         ${botaoVoltarOuFechar}
 
-        <!-- Banner Arqueado/Curvado -->
-        <div class="perfil-banner" style="${bannerStyle}">
+        <div class="perfil-banner profile-preview-banner" style="${bannerStyle}">
           <div class="perfil-banner-overlay"></div>
-          ${customStatusHtml}
-          ${botaoBannerAcao}
         </div>
         
-        <!-- Cabeçalho Principal -->
-        <div class="perfil-header">
-          <div class="perfil-avatar-wrapper">
-            <div class="perfil-avatar-container">
-              <img src="${avatarSrc}" class="perfil-avatar" onerror="this.onerror=null; this.src='${defaultAvatar}';" alt="Avatar">
-              ${molduraSrc ? `<img src="${molduraSrc}" class="perfil-moldura" alt="Moldura">` : ''}
-              ${htmlStatusDot}
+        <div class="perfil-header profile-preview-header">
+          <div class="perfil-avatar-wrapper profile-preview-avatar-box">
+            <img src="${avatarSrc}" class="perfil-avatar preview-avatar" onerror="this.onerror=null; this.src='${defaultAvatar}';" alt="Avatar">
+            ${molduraSrc ? `<img src="${molduraSrc}" class="perfil-moldura preview-moldura" alt="Moldura">` : ''}
+            <div class="avatar-status-badge">
+              ${statusDotHtml}
             </div>
           </div>
           
-          <div class="perfil-names-container">
+          <div class="perfil-names-container profile-preview-main-info">
             <div class="perfil-display-row">
               <span class="perfil-display-name">${sanitizarHtmlPerfil(nomeExibicao)}</span>
-              ${htmlVerificados}
             </div>
             
             <div class="perfil-handle-row">
-              <span class="perfil-handle-username" onclick="window.copiarHandleUsuario('@${sanitizarHtmlPerfil(user.username || 'usuario')}')" title="Clique para copiar @username">
+              <span class="perfil-handle-username preview-username" onclick="window.copiarHandleUsuario('@${sanitizarHtmlPerfil(user.username || 'usuario')}')" title="Clique para copiar @username">
                 @${sanitizarHtmlPerfil(user.username || 'usuario')} <i class="fa-regular fa-copy copy-icon"></i>
               </span>
               <button class="btn-compartilhar-perfil" onclick="window.compartilharPerfil(window._perfilUsuarioCache)" title="Compartilhar Perfil">
                 <i class="fa-solid fa-share-nodes"></i>
               </button>
             </div>
-          </div>
 
-          <!-- Metadados de Perfil -->
-          <div class="perfil-meta-info">
-            <div class="perfil-meta-item clickable" onclick="window.copiarIdUsuario('${user.id || ''}')" title="Clique para copiar ID">
-              <i class="fa-solid fa-hashtag"></i> ID: ${user.id || 'N/A'}
-            </div>
-            <div class="perfil-meta-item" title="${tempoDeContaTexto}">
-              <i class="fa-solid fa-calendar-days"></i> Membro desde: ${dataMembroTexto}
-            </div>
-            <div class="perfil-meta-item" title="Estado de Presença">
-              <i class="fa-solid ${statusObj.icone}" style="color: ${statusObj.cor}; font-size: 0.75rem;"></i> Status: ${statusObj.texto}
-            </div>
-            ${user.nivel ? `
-              <div class="perfil-meta-item" title="Nível do Perfil">
-                <i class="fa-solid fa-bolt" style="color:#ff2d55;"></i> Nível ${user.nivel}
-              </div>
-            ` : ''}
-          </div>
-
-          <!-- Barra de Estatísticas Sociais -->
-          <div class="perfil-stats-bar">
-            <div class="stat-item" onclick="if(typeof window.abrirListaSocial === 'function') window.abrirListaSocial(${idAlvoNum}, 'amigos')">
-              <span class="stat-value" id="perfil-total-amigos">${formatarNumeroMetrica(user.total_amigos)}</span>
-              <span class="stat-label">Amigos</span>
-            </div>
-            <div class="stat-item" onclick="if(typeof window.abrirListaSocial === 'function') window.abrirListaSocial(${idAlvoNum}, 'seguindo')">
-              <span class="stat-value" id="perfil-total-seguindo">${formatarNumeroMetrica(user.total_seguindo)}</span>
-              <span class="stat-label">Seguindo</span>
-            </div>
-            <div class="stat-item" onclick="if(typeof window.abrirListaSocial === 'function') window.abrirListaSocial(${idAlvoNum}, 'seguidores')">
-              <span class="stat-value" id="perfil-total-seguidores">${formatarNumeroMetrica(user.total_seguidores)}</span>
-              <span class="stat-label">Seguidores</span>
+            <div class="preview-badge-row">
+              ${htmlVerificados}
             </div>
           </div>
 
-          <!-- Tags de Perfil -->
-          ${htmlTags}
-
-          <!-- Biografia / Sobre mim -->
-          <div class="perfil-bio-section">
-            <div class="perfil-bio-title">
-              <i class="fa-solid fa-align-left"></i> Sobre mim
-            </div>
-            <div class="perfil-bio-text">${sobreMimTexto}</div>
-          </div>
-
-          <!-- Botões de Ação Social (Mensagem, Seguir, Adicionar Amigo) -->
           ${htmlAcoesSociaisAbaixo}
+
+          <div class="profile-preview-details">
+            ${customStatusHtml}
+
+            <div class="preview-meta-grid">
+              <span><i class="fa-solid fa-cake-candles"></i> <strong>${calcularIdadeFormatada(user.data_nascimento)}</strong></span>
+              <span><i class="fa-solid fa-venus-mars"></i> <strong>${sanitizarHtmlPerfil(user.genero || 'Gênero não informado')}</strong> (${sanitizarHtmlPerfil(user.pronome || 'Pronomes')})</span>
+            </div>
+
+            <div class="perfil-meta-info preview-meta-grid" style="margin-top: 4px;">
+              <div class="perfil-meta-item clickable" onclick="window.copiarIdUsuario('${user.id || ''}')" title="Clique para copiar ID">
+                <i class="fa-solid fa-hashtag"></i> ID: ${user.id || 'N/A'}
+              </div>
+              <div class="perfil-meta-item" title="${tempoDeContaTexto}">
+                <i class="fa-solid fa-calendar-days"></i> Membro desde: ${dataMembroTexto}
+              </div>
+              <div class="perfil-meta-item" title="Estado de Presença">
+                Presença: <strong class="status-label-text">${infoStatus.label}</strong>
+              </div>
+            </div>
+
+            <div class="perfil-stats-bar">
+              <div class="stat-item" onclick="if(typeof window.abrirListaSocial === 'function') window.abrirListaSocial(${idAlvoNum}, 'amigos')">
+                <span class="stat-value" id="perfil-total-amigos">${formatarNumeroMetrica(user.total_amigos)}</span>
+                <span class="stat-label">Amigos</span>
+              </div>
+              <div class="stat-item" onclick="if(typeof window.abrirListaSocial === 'function') window.abrirListaSocial(${idAlvoNum}, 'seguindo')">
+                <span class="stat-value" id="perfil-total-seguindo">${formatarNumeroMetrica(user.total_seguindo)}</span>
+                <span class="stat-label">Seguindo</span>
+              </div>
+              <div class="stat-item" onclick="if(typeof window.abrirListaSocial === 'function') window.abrirListaSocial(${idAlvoNum}, 'seguidores')">
+                <span class="stat-value" id="perfil-total-seguidores">${formatarNumeroMetrica(user.total_seguidores)}</span>
+                <span class="stat-label">Seguidores</span>
+              </div>
+            </div>
+
+            <p class="preview-bio perfil-bio-text">${sobreMimTexto}</p>
+
+            ${htmlTags}
+          </div>
 
         </div>
       </div>
@@ -552,7 +636,7 @@
   function tratarEscPerfil(e) {
     if (e.key === 'Escape') {
       const meuId = obterMeuIdLogado();
-      const idCache = window._perfilUsuarioCache ? Number(window._perfilUsuarioCache.id) : null;
+      const idCache = global._perfilUsuarioCache ? Number(global._perfilUsuarioCache.id) : null;
       
       if (meuId !== null && meuId === idCache && historicoPerfis.length === 0) {
         return;
@@ -564,26 +648,22 @@
   function fecharPerfilResetandoHistorico() {
     cancelarInscricaoRealtimePerfil();
     historicoPerfis = [];
-    window._perfilUsuarioCache = null;
+    global._perfilUsuarioCache = null;
 
     const container = document.getElementById('perfil-full-container');
     if (container) container.remove();
     document.removeEventListener('keydown', tratarEscPerfil);
 
-    if (typeof window.exibirHomeCard === 'function') {
-      window.exibirHomeCard();
+    if (typeof global.exibirHomeCard === 'function') {
+      global.exibirHomeCard();
     }
   }
 
-  // ========================================================================
-  // CARREGAMENTO DE MÉTRICAS SOCIAIS
-  // ========================================================================
-
   async function carregarMetricasESocialPerfil(idAlvo, ehMeuPerfil) {
-    if (typeof window.obterStatusRelacionamentoESocial !== 'function') return;
+    if (typeof global.obterStatusRelacionamentoESocial !== 'function') return;
 
     try {
-      const dados = await window.obterStatusRelacionamentoESocial(idAlvo);
+      const dados = await global.obterStatusRelacionamentoESocial(idAlvo);
       if (!dados) return;
 
       const elAmigos = document.getElementById('perfil-total-amigos');
@@ -633,8 +713,8 @@
     const btn = document.getElementById('btn-perfil-seguir');
     if (btn) btn.disabled = true;
 
-    if (typeof window.alternarSeguir === 'function') {
-      const res = await window.alternarSeguir(idAlvo);
+    if (typeof global.alternarSeguir === 'function') {
+      const res = await global.alternarSeguir(idAlvo);
       if (res && res.sucesso) {
         await carregarMetricasESocialPerfil(idAlvo, false);
       }
@@ -647,8 +727,8 @@
     const btn = document.getElementById('btn-perfil-amizade');
     if (btn) btn.disabled = true;
 
-    if (typeof window.alternarSolicitacaoAmizade === 'function') {
-      const res = await window.alternarSolicitacaoAmizade(idAlvo);
+    if (typeof global.alternarSolicitacaoAmizade === 'function') {
+      const res = await global.alternarSolicitacaoAmizade(idAlvo);
       if (res && res.sucesso) {
         await carregarMetricasESocialPerfil(idAlvo, false);
       }
@@ -657,7 +737,6 @@
     if (btn) btn.disabled = false;
   }
 
-  // Deeplink via URL
   async function verificarDeeplinkPerfilURL() {
     const params = new URLSearchParams(window.location.search);
     const targetUser = params.get('user');
@@ -665,7 +744,7 @@
 
     if (!targetUser && !targetId) return;
 
-    const sb = window.supabaseClient || window.supabase || window.sb;
+    const sb = global.supabaseClient || global.supabase || global.sb;
     if (!sb) return;
 
     try {
@@ -691,14 +770,15 @@
   });
 
   // Exportações Globais
-  window.abrirPerfil = abrirPerfil;
-  window.fecharPerfil = fecharPerfilResetandoHistorico;
-  window.voltarOuFecharPerfil = voltarOuFecharPerfil;
-  window.compartilharPerfil = compartilharPerfil;
-  window.abrirModalRecadoCompleto = abrirModalRecadoCompleto;
-  window.executarAcaoSeguir = executarAcaoSeguir;
-  window.executarAcaoAmizade = executarAcaoAmizade;
-  window.enviarMensagemParaUsuario = enviarMensagemParaUsuario;
-  window.copiarHandleUsuario = (handle) => copiarParaAreaTransferencia(handle, 'Nome de usuário');
-  window.copiarIdUsuario = (id) => copiarParaAreaTransferencia(id, 'ID do usuário');
-})();
+  global.abrirPerfil = abrirPerfil;
+  global.fecharPerfil = fecharPerfilResetandoHistorico;
+  global.voltarOuFecharPerfil = voltarOuFecharPerfil;
+  global.compartilharPerfil = compartilharPerfil;
+  global.abrirModalRecadoCompleto = abrirModalRecadoCompleto;
+  global.executarAcaoSeguir = executarAcaoSeguir;
+  global.executarAcaoAmizade = executarAcaoAmizade;
+  global.enviarMensagemParaUsuario = enviarMensagemParaUsuario;
+  global.copiarHandleUsuario = (handle) => copiarParaAreaTransferencia(handle, 'Nome de usuário');
+  global.copiarIdUsuario = (id) => copiarParaAreaTransferencia(id, 'ID do usuário');
+
+})(typeof window !== 'undefined' ? window : this);

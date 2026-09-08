@@ -1,13 +1,24 @@
 /* ==========================================================================
-   ESTILOS DO HOMECARD & PAINEL DE MEMBROS (homecard.css) - SPHERE v5.2
-   Glassmorphism, Cyber-Glows, Carrossel Fluido & Micro-interações
+   ESTILOS DO HOMECARD & PAINEL DE MEMBROS (homecard.css) - SPHERE v5.2 PRO
+   Glassmorphism Pro, Efeitos Cyber-Glow, Layout em Vertical/Lista & Micro-interações
    ========================================================================== */
 
-/* Keyframes para Entrada e Pulsações */
+:root {
+  /* Variáveis Dinâmicas de Tema com Fallback Seguro */
+  --user-theme-color: #ff2d55;
+  --user-theme-color-2: #ff7675;
+  --user-theme-gradient: linear-gradient(135deg, var(--user-theme-color), var(--user-theme-color-2));
+  --user-theme-glow: rgba(255, 45, 85, 0.35);
+  --user-theme-border: rgba(255, 45, 85, 0.22);
+}
+
+/* --------------------------------------------------------------------------
+   1. KEYFRAMES & ANIMAÇÕES
+   -------------------------------------------------------------------------- */
 @keyframes pzHomecardFade {
   from { 
     opacity: 0; 
-    transform: translateY(-10px) scale(0.98); 
+    transform: translateY(-12px) scale(0.98); 
   }
   to { 
     opacity: 1; 
@@ -15,22 +26,18 @@
   }
 }
 
-@keyframes pzOnlinePulse {
-  0% { box-shadow: 0 0 0 0 rgba(35, 165, 90, 0.4); }
-  70% { box-shadow: 0 0 0 6px rgba(35, 165, 90, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(35, 165, 90, 0); }
-}
-
 @keyframes skeletonShimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
-/* === CONTAINER PRINCIPAL === */
+/* --------------------------------------------------------------------------
+   2. CONTAINER PRINCIPAL
+   -------------------------------------------------------------------------- */
 .homecard-wrapper-container {
   width: 100%;
   max-width: 980px;
-  margin: 12px auto 20px auto;
+  margin: 12px auto 24px auto;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -43,22 +50,24 @@
   display: none !important;
 }
 
-/* === CARD DE DESTAQUE DO USUÁRIO LOGADO === */
+/* --------------------------------------------------------------------------
+   3. CARD DE DESTAQUE DO USUÁRIO LOGADO (MEU CARD)
+   -------------------------------------------------------------------------- */
 .home-user-card {
   position: relative;
   display: flex;
   align-items: center;
   gap: 16px;
   width: 100%;
-  min-height: 94px;
+  min-height: 90px;
   padding: 16px 20px;
   border-radius: 22px;
   box-sizing: border-box;
   background: linear-gradient(135deg, rgba(26, 13, 31, 0.92) 0%, rgba(12, 6, 15, 0.96) 100%);
   background-size: cover;
   background-position: center;
-  border: 1px solid rgba(255, 45, 85, 0.3);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(255, 45, 85, 0.12);
+  border: 1px solid var(--user-theme-border, rgba(255, 45, 85, 0.38));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 18px var(--user-theme-glow, rgba(255, 45, 85, 0.15));
   cursor: pointer;
   overflow: hidden;
   user-select: none;
@@ -69,8 +78,8 @@
 
 .home-user-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(255, 45, 85, 0.65);
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 45, 85, 0.25);
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.8), 0 0 25px var(--user-theme-glow, rgba(255, 45, 85, 0.28));
+  border-color: var(--user-theme-color, #ff2d55);
 }
 
 .card-avatar-section {
@@ -83,8 +92,8 @@
 
 .card-avatar-section .avatar-wrapper {
   position: relative;
-  width: 62px;
-  height: 62px;
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -94,7 +103,7 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 2px solid #ff2d55;
+  border: 2px solid var(--user-theme-color, #ff2d55);
   object-fit: cover;
   background: #120a14;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -109,7 +118,7 @@
   pointer-events: none;
   object-fit: contain;
   z-index: 2;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
 }
 
 .home-user-card.is-creator .card-avatar {
@@ -117,7 +126,6 @@
   box-shadow: 0 0 18px rgba(241, 196, 15, 0.6);
 }
 
-/* Indicador de Status Dot no Avatar */
 .card-avatar-section .avatar-status-badge {
   position: absolute;
   bottom: 0px;
@@ -129,40 +137,14 @@
   pointer-events: none;
 }
 
-.card-avatar-section .avatar-status-badge .status-dot {
-  width: 15px;
-  height: 15px;
-  border: 2.5px solid #120a14;
-}
-
-/* Informações de Texto do Card do Usuário */
 .card-info-section {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
   overflow: hidden;
   z-index: 2;
-}
-
-.card-stats-row {
-  display: flex;
-  align-items: center;
-}
-
-.card-stats-row .custom-status-text {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
-  background: rgba(0, 0, 0, 0.45);
-  padding: 4px 12px;
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  max-width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-sizing: border-box;
 }
 
 .card-main-row {
@@ -174,7 +156,7 @@
 .card-display-name-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -183,26 +165,40 @@
   font-size: 1.1rem;
   color: #ffffff;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .card-username {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.82rem;
   font-weight: 600;
+  color: rgba(255, 255, 255, 0.65);
 }
 
-/* Botão de Edição Rápida (32px de Altura Padrão) */
+.card-stats-row {
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.card-stats-row .custom-status-text {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 3px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
+}
+
+/* Botão de Edição Rápida (32px) */
 .card-edit-quick-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 45, 85, 0.4);
-  color: #ff2d55;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  max-width: 32px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--user-theme-border, rgba(255, 45, 85, 0.4));
+  color: #ffffff;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -212,7 +208,6 @@
   margin-left: auto;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   padding: 0;
   flex-shrink: 0;
   font-size: 0.85rem;
@@ -220,19 +215,20 @@
 }
 
 .card-edit-quick-btn:hover {
-  background: #ff2d55;
-  color: #ffffff;
-  border-color: #ff2d55;
+  background: var(--user-theme-gradient, #ff2d55);
+  border-color: var(--user-theme-color, #ff2d55);
   transform: rotate(15deg) scale(1.1);
-  box-shadow: 0 0 15px rgba(255, 45, 85, 0.6);
+  box-shadow: 0 0 15px var(--user-theme-glow, rgba(255, 45, 85, 0.6));
 }
 
-/* === PAINEL DE MEMBROS DA COMUNIDADE === */
+/* --------------------------------------------------------------------------
+   4. PAINEL DE MEMBROS DA COMUNIDADE
+   -------------------------------------------------------------------------- */
 .server-users-panel {
   background: linear-gradient(160deg, rgba(22, 11, 27, 0.88) 0%, rgba(14, 7, 18, 0.94) 100%);
-  border: 1px solid rgba(255, 45, 85, 0.22);
+  border: 1px solid var(--user-theme-border, rgba(255, 45, 85, 0.22));
   border-radius: 22px;
-  padding: 16px 18px;
+  padding: 18px 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
@@ -245,10 +241,14 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .server-users-title {
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 900;
   color: #ffffff;
   text-transform: uppercase;
@@ -259,87 +259,130 @@
 }
 
 .server-users-title i {
-  color: #ff2d55;
+  color: var(--user-theme-color, #ff2d55);
 }
 
-.online-count-badge {
-  background: rgba(35, 165, 90, 0.15);
-  border: 1px solid rgba(35, 165, 90, 0.4);
-  color: #23a55a;
-  font-size: 0.68rem;
-  padding: 3px 9px;
-  border-radius: 12px;
-  font-weight: 800;
-  margin-left: 6px;
-  display: inline-flex;
+/* Caixa de Pesquisa no Painel */
+.homecard-search-box {
+  position: relative;
+  display: flex;
   align-items: center;
-  gap: 5px;
-  animation: pzOnlinePulse 2s infinite;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 4px 10px;
+  width: 180px;
+  transition: all 0.2s ease;
 }
 
-/* Carrossel Horizontal de Membros Otimizado */
+.homecard-search-box:focus-within {
+  border-color: var(--user-theme-color, #ff2d55);
+  box-shadow: 0 0 12px var(--user-theme-glow, rgba(255, 45, 85, 0.3));
+  width: 210px;
+}
+
+.homecard-search-box .search-icon {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-right: 6px;
+}
+
+.homecard-search-box input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  width: 100%;
+}
+
+.homecard-search-box input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Lista Vertical */
 .server-users-list {
   display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 12px;
-  overflow-x: auto;
-  padding: 4px 2px 12px 2px;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
 }
 
-.server-users-list::-webkit-scrollbar {
-  height: 4px;
-}
-.server-users-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 45, 85, 0.35);
-  border-radius: 10px;
-}
-.server-users-list::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+/* --------------------------------------------------------------------------
+   5. CABEÇALHOS DE SEÇÃO & DIVISOR DE LISTA
+   -------------------------------------------------------------------------- */
+.homecard-section-header {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #d1b8dc;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 2px;
 }
 
-/* Card Individual do Membro */
+.homecard-section-header i {
+  color: var(--user-theme-color, #ff2d55);
+  font-size: 0.82rem;
+}
+
+.homecard-section-divider {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--user-theme-border, rgba(255, 45, 85, 0.35)), transparent);
+  margin: 10px 0;
+  width: 100%;
+}
+
+.homecard-empty-section {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.35);
+  font-style: italic;
+  padding: 6px 12px;
+}
+
+/* --------------------------------------------------------------------------
+   6. ITEM INDIVIDUAL DE USUÁRIO (NOVO ESTILO SLIM)
+   -------------------------------------------------------------------------- */
 .server-user-item {
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  width: 132px;
-  min-width: 132px;
-  max-width: 132px;
-  padding: 14px 10px 12px 10px;
-  border-radius: 18px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  flex-shrink: 0;
-  text-align: center;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
+  gap: 12px;
 }
 
 .server-user-item:hover {
-  background: rgba(255, 45, 85, 0.12);
-  border-color: rgba(255, 45, 85, 0.45);
-  transform: translateY(-4px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--user-theme-border, rgba(255, 45, 85, 0.4));
+  transform: translateX(4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
 }
 
 .server-user-item.is-self {
-  border-color: rgba(255, 45, 85, 0.5);
-  background: rgba(255, 45, 85, 0.08);
+  border-color: var(--user-theme-border, rgba(255, 45, 85, 0.45));
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .server-user-avatar-wrapper {
   position: relative;
-  width: 54px;
-  height: 54px;
-  min-width: 54px;
-  min-height: 54px;
-  margin-bottom: 8px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -347,18 +390,19 @@
 }
 
 .server-user-avatar {
-  width: 54px;
-  height: 54px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid rgba(255, 255, 255, 0.15);
   background: #180e1b;
   box-sizing: border-box;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .server-user-item:hover .server-user-avatar {
-  transform: scale(1.05);
+  transform: scale(1.06);
+  border-color: var(--user-theme-color, rgba(255, 45, 85, 0.6));
 }
 
 .server-user-moldura {
@@ -372,11 +416,6 @@
   z-index: 2;
 }
 
-.server-user-item.is-self .server-user-avatar {
-  border-color: #ff2d55;
-}
-
-/* Indicador de Status no Avatar */
 .server-user-avatar-wrapper .avatar-status-badge {
   position: absolute;
   bottom: 0px;
@@ -384,174 +423,125 @@
   z-index: 5;
 }
 
-.server-user-avatar-wrapper .avatar-status-badge .status-dot {
-  width: 14px;
-  height: 14px;
-  border: 2px solid #180e1b;
-}
-
 .server-user-info {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
+  justify-content: center;
+  gap: 3px;
   flex: 1;
+  overflow: hidden;
 }
 
 .server-user-names-row {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
+  gap: 6px;
   width: 100%;
 }
 
 .server-user-display-name {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   font-weight: 800;
   color: #ffffff;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
 }
 
-.server-user-handle {
-  font-size: 0.68rem;
-  color: rgba(255, 255, 255, 0.45);
+.server-user-username {
+  font-size: 0.74rem;
   font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
 }
 
-/* Recado Personalizado no Carrossel */
-.server-user-custom-status,
-.server-user-info .custom-status-text {
-  font-size: 0.66rem;
+/* Recado do Perfil */
+.homecard-user-recado {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
   color: #e0d0e6;
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 2px 8px;
   border-radius: 8px;
-  max-width: 100%;
+  max-width: fit-content;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.homecard-user-recado:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--user-theme-border, rgba(255, 45, 85, 0.4));
+  color: #ffffff;
+}
+
+.homecard-recado-emoji {
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.homecard-recado-texto {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-sizing: border-box;
+  max-width: 240px;
 }
 
-.server-user-tag-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  flex-wrap: wrap;
-  width: 100%;
-  min-height: 16px;
-  margin-top: 2px;
-}
-
-.badge-you {
-  background: linear-gradient(135deg, #ff2d55 0%, #e02448 100%);
-  color: #ffffff;
-  font-size: 0.58rem;
-  font-weight: 900;
-  padding: 2px 6px;
-  border-radius: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  line-height: 1;
-  box-shadow: 0 2px 6px rgba(255, 45, 85, 0.3);
-}
-
-/* Botão de Enviar Mensagem Rápido (Ajustado para 32px) */
+/* Botão de Chat Rápido na Linha (32px) */
 .server-user-chat-quick-btn {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  background: #ff2d55;
-  color: #ffffff;
-  border: none;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  max-width: 32px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--user-theme-color, #ff2d55);
+  border: 1px solid var(--user-theme-border, rgba(255, 45, 85, 0.4));
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
   border-radius: 50%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 0.8rem;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
-  z-index: 6;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   padding: 0;
   box-sizing: border-box;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .server-user-item:hover .server-user-chat-quick-btn {
-  opacity: 1;
-  transform: scale(1);
+  background: var(--user-theme-gradient, #ff2d55);
+  color: #ffffff;
+  border-color: var(--user-theme-color, #ff2d55);
+  transform: scale(1.08);
+  box-shadow: 0 0 12px var(--user-theme-glow, rgba(255, 45, 85, 0.5));
 }
 
-.server-user-chat-quick-btn:hover {
-  background: #ffffff;
-  color: #ff2d55;
-  transform: scale(1.1);
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
-}
-
-/* Estados de Skeleton e Erro */
+/* --------------------------------------------------------------------------
+   7. SKELETON LOADERS & MENSAGENS DE ERRO
+   -------------------------------------------------------------------------- */
 .homecard-skeleton {
-  width: 132px;
-  min-width: 132px;
-  height: 114px;
-  border-radius: 18px;
+  width: 100%;
+  height: 52px;
+  border-radius: 16px;
   background: linear-gradient(90deg, rgba(255,255,255,0.02) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.02) 75%);
   background-size: 200% 100%;
   animation: skeletonShimmer 1.4s infinite;
-  flex-shrink: 0;
 }
 
 .homecard-error-msg {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #ff2d55;
+  color: var(--user-theme-color, #ff2d55);
   padding: 12px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-/* ==========================================================================
-   ADAPTAÇÕES RESPONSIVAS
-   ========================================================================== */
-
-/* COMPUTADOR (> 768px) */
-@media (min-width: 769px) {
-  .homecard-wrapper-container {
-    padding: 0 20px;
-  }
-  .home-user-card {
-    padding: 18px 24px;
-  }
-  .card-avatar-section .avatar-wrapper {
-    width: 66px;
-    height: 66px;
-  }
-}
-
-/* DISPOSITIVOS MÓVEIS (< 600px) */
+/* --------------------------------------------------------------------------
+   8. ADAPTAÇÕES RESPONSIVAS
+   -------------------------------------------------------------------------- */
 @media (max-width: 600px) {
   .homecard-wrapper-container {
     padding: 0 10px;
@@ -574,38 +564,24 @@
     font-size: 0.98rem;
   }
 
-  .card-username {
-    font-size: 0.76rem;
-  }
-
   .server-users-panel {
-    padding: 12px 14px;
+    padding: 14px 12px;
     border-radius: 18px;
   }
 
-  /* Exibe o botão de chat com facilidade de toque no mobile */
-  .server-user-chat-quick-btn {
-    opacity: 0.95;
-    transform: scale(0.9);
-    top: 4px;
-    right: 4px;
+  .homecard-search-box {
+    width: 100%;
+  }
+
+  .homecard-search-box:focus-within {
+    width: 100%;
+  }
+
+  .homecard-recado-texto {
+    max-width: 140px;
   }
 
   .server-user-item {
-    width: 118px;
-    min-width: 118px;
-    padding: 12px 8px 10px 8px;
-  }
-
-  .server-user-avatar-wrapper {
-    width: 48px;
-    height: 48px;
-    min-width: 48px;
-    min-height: 48px;
-  }
-
-  .server-user-avatar {
-    width: 48px;
-    height: 48px;
+    padding: 8px 10px;
   }
 }

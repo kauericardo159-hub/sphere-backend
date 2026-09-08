@@ -8,16 +8,16 @@
    -------------------------------------------------------------------------- */
 @keyframes navPillPulse {
   0%, 100% {
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.88), 0 0 20px rgba(255, 45, 85, 0.18);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.88), 0 0 20px var(--user-theme-glow, rgba(255, 45, 85, 0.22));
   }
   50% {
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.95), 0 0 28px rgba(255, 45, 85, 0.32);
+    box-shadow: 0 12px 42px rgba(0, 0, 0, 0.95), 0 0 30px var(--user-theme-glow, rgba(255, 45, 85, 0.38));
   }
 }
 
 @keyframes popBadgeNotif {
   0% { transform: scale(0) translateY(-50%); opacity: 0; }
-  70% { transform: scale(1.2) translateY(-50%); }
+  70% { transform: scale(1.25) translateY(-50%); }
   100% { transform: scale(1) translateY(-50%); opacity: 1; }
 }
 
@@ -27,7 +27,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   2. BARRA INFERIOR FLUTUANTE (PILL CONTAINER)
+   2. BARRA INFERIOR FLUTUANTE (PILL CONTAINER DYN-COLOR)
    -------------------------------------------------------------------------- */
 .app-bottom-bar {
   position: fixed;
@@ -57,11 +57,12 @@
   box-sizing: border-box;
   border-radius: 36px;
   background: rgba(16, 8, 20, 0.88);
-  border: 1px solid rgba(255, 45, 85, 0.28);
+  border: 1px solid var(--user-theme-border, rgba(255, 45, 85, 0.28));
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   animation: navPillPulse 4s infinite ease-in-out;
   position: relative;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* Linha de brilho superior interna no vidro */
@@ -72,7 +73,7 @@
   left: 20%;
   right: 20%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
   pointer-events: none;
 }
 
@@ -90,7 +91,7 @@
   font-size: 0.68rem;
   font-weight: 800;
   cursor: pointer;
-  padding: 6px 14px;
+  padding: 6px 12px;
   height: 44px;
   border-radius: 24px;
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
@@ -118,12 +119,12 @@
 }
 
 /* --------------------------------------------------------------------------
-   4. ESTADO DA ABA ATIVA (Destaque Neon Pill)
+   4. ESTADO DA ABA ATIVA (Destaque Dinâmico com Tema do Usuário)
    -------------------------------------------------------------------------- */
 .bottom-nav-item.active {
   color: #ffffff;
-  background: linear-gradient(135deg, rgba(255, 45, 85, 0.92) 0%, rgba(216, 27, 67, 0.92) 100%);
-  box-shadow: 0 4px 16px rgba(255, 45, 85, 0.42), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  background: var(--user-theme-gradient, linear-gradient(135deg, rgba(255, 45, 85, 0.92) 0%, rgba(216, 27, 67, 0.92) 100%));
+  box-shadow: 0 4px 16px var(--user-theme-glow, rgba(255, 45, 85, 0.42)), inset 0 1px 1px rgba(255, 255, 255, 0.35);
   animation: floatActiveIndicator 3s ease-in-out infinite;
 }
 
@@ -188,8 +189,8 @@
 .top-action-badge {
   position: absolute;
   top: 4px;
-  right: 12px;
-  background: #ff2d55;
+  right: 10px;
+  background: var(--user-theme-color, #ff2d55);
   color: #ffffff;
   font-size: 0.62rem;
   font-weight: 900;
@@ -201,13 +202,13 @@
   align-items: center;
   justify-content: center;
   border: 2px solid #100814;
-  box-shadow: 0 0 12px rgba(255, 45, 85, 0.95);
+  box-shadow: 0 0 12px var(--user-theme-glow, rgba(255, 45, 85, 0.95));
   animation: popBadgeNotif 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   z-index: 10;
 }
 
 /* --------------------------------------------------------------------------
-   7. RESETS & ESPAÇADORES GLOBAIS DO CORPO DA PÁGINA
+   7. RESETS & ESPAÇADORES GLOBAIS
    -------------------------------------------------------------------------- */
 body.has-bars {
   padding-bottom: 90px !important;
@@ -218,7 +219,7 @@ body.chat-fullscreen {
 }
 
 /* --------------------------------------------------------------------------
-   8. ADAPTAÇÃO RESPONSIVA PARA DISPOSITIVOS MÓVEIS
+   8. ADAPTAÇÃO RESPONSIVA PARA MOBILE
    -------------------------------------------------------------------------- */
 @media (max-width: 480px) {
   .app-bottom-bar {
@@ -234,7 +235,7 @@ body.chat-fullscreen {
   }
 
   .bottom-nav-item {
-    padding: 4px 8px;
+    padding: 4px 6px;
     height: 40px;
     font-size: 0.65rem;
     border-radius: 20px;
@@ -250,7 +251,7 @@ body.chat-fullscreen {
   }
 
   .top-action-badge {
-    right: 8px;
+    right: 6px;
     top: 2px;
   }
 }
